@@ -6,7 +6,7 @@ Integration tests verify complete workflows across different providers using OGX
 
 ```bash
 # Run all integration tests with existing recordings
-uv run --group test \
+uv run --group dev \
   pytest -sv tests/integration/ --stack-config=starter
 ```
 

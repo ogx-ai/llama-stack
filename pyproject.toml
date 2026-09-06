@@ -131,7 +131,11 @@ starter = [
 ]
 
 [dependency-groups]
+# The dev group contains everything needed for development: unit and integration test
+# dependencies, type stubs for complete mypy coverage, and developer tooling.
+# If a provider requires additional dependencies for testing, add them here too.
 dev = [
+<<<<<<< HEAD
     "pytest>=8.4",
     "pytest-timeout",
     "pytest-asyncio>=1.0",
@@ -244,6 +248,82 @@ test = [
     "langchain-core",
     "langgraph",
     "google-genai>=1.69.0",
+=======
+    # Test dependencies (unit + integration)
+    "aiohttp",
+    "aiosqlite",
+    "anthropic>=0.105.2",
+    "asyncpg>=0.29.0",
+    "autoevals",
+    "blobfile",
+    "chardet",
+    "chromadb>=1.0.15",
+    "coverage",
+    "databricks-sdk>=0.114.0",
+    "datasets>=4.0.0",
+    "docling-slim[service-client]>=2.117.0",  # Chunk output through the convert endpoint added in 2.117.0
+    "elasticsearch>=8.16.0, <9.0.0",
+    "faiss-cpu",
+    "fairscale",
+    "google-genai>=1.69.0,<2",
+    "langchain-core>=0.3.85",                            # CVE-2026-44843: insecure deserialization
+    "langchain-openai>=1.2.2",
+    "langgraph",
+    "lm-format-enforcer",
+    "markitdown[all]",
+    "mcp>=1.28.1,<2.0",
+    "milvus-lite>=2.5.0; platform_machine == 'x86_64' or platform_machine == 'aarch64' or platform_machine == 'arm64'",
+    "moto[s3]>=5.1.10",
+    "nest-asyncio",
+    "neo4j",
+    "ollama",
+    "peft",
+    "pgvector>=0.3.0",
+    "psycopg2-binary>=2.9.0",
+    "pymilvus>=2.6.2",
+    "pymongo",
+    "pypdf>=6.13.3",
+    "qdrant-client",
+    "requests",
+    "sqlalchemy[asyncio]>=2.0.41",
+    "sqlite-vec",
+    "together>=2",
+    "torch>=2.13.0",
+    "torchtune",
+    "torchvision>=0.27.0",
+    "transformers",
+    "trl>=1.5.0",
+    "unstructured-client>=0.25.0",
+    "weaviate-client>=4.16.4",
+    # Type stubs and optional runtime dependencies for complete mypy coverage
+    "boto3-stubs[s3]",
+    "pandas",
+    "pandas-stubs",
+    "streamlit>=1.58.0",
+    "streamlit-option-menu",
+    "types-jsonschema",
+    "types-psutil>=7.2.2.20260518",
+    "types-requests",
+    "types-setuptools",
+    "types-tqdm",
+    # Developer tooling
+    "black>=26.5.1",
+    "boto3>=1.43.18",
+    "mypy",
+    "nbval",                         # For notebook testing
+    "ogx-open-client>=1.0.2",
+    "openapi-spec-validator>=0.9.0",
+    "pre-commit>=4.4.0",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov",
+    "pytest-html",
+    "pytest-json-report",
+    "pytest-socket>=0.8.0",                 # For blocking network access in unit tests
+    "pytest-timeout",
+    "ruff>=0.15.14",
+    "ruamel.yaml",                   # needed for openapi generator
+>>>>>>> 09f74cd (fix: Add Qdrant to unit test dependencies (#6476))
 ]
 docs = [
     "setuptools",
