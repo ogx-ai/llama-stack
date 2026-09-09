@@ -36,6 +36,10 @@ inputs:
     description: 'Skip committing recordings (upload as artifacts instead)'
     required: false
     default: 'false'
+  install-deps:
+    description: 'Pass --install-deps to integration-tests.sh so missing provider dependencies are installed automatically'
+    required: false
+    default: 'true'
 
 runs:
   using: 'composite'
@@ -56,6 +60,7 @@ runs:
         INPUT_SUITE: ${{ inputs.suite }}
         INPUT_SUBDIRS: ${{ inputs.subdirs }}
         INPUT_PATTERN: ${{ inputs.pattern }}
+        INPUT_INSTALL_DEPS: ${{ inputs.install-deps }}
       run: |
         SCRIPT_ARGS="--stack-config ${INPUT_STACK_CONFIG} --inference-mode ${INPUT_INFERENCE_MODE}"
 
@@ -71,6 +76,9 @@ runs:
         fi
         if [ -n "${INPUT_PATTERN}" ]; then
           SCRIPT_ARGS="${SCRIPT_ARGS} --pattern ${INPUT_PATTERN}"
+        fi
+        if [ "${INPUT_INSTALL_DEPS}" != "false" ]; then
+          SCRIPT_ARGS="${SCRIPT_ARGS} --install-deps"
         fi
 
         echo "=== Running command ==="
