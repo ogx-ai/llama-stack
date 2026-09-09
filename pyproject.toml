@@ -197,6 +197,7 @@ type_checking = [
 unit = [
     "anthropic",
     "databricks-sdk",
+    "qdrant-client",
     "sqlite-vec",
     "ollama",
     "aiosqlite",

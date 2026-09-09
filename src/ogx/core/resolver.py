@@ -436,6 +436,9 @@ async def instantiate_provider(
         args = [config, deps]
         if "policy" in inspect.signature(getattr(module, method)).parameters:
             args.append(policy)
+        if "route_policy" in inspect.signature(getattr(module, method)).parameters:
+            route_policy = run_config.server.auth.route_policy if run_config.server.auth else []
+            args.append(route_policy)
     fn = getattr(module, method)
     impl = await fn(*args)
     impl.__provider_id__ = provider.provider_id
