@@ -165,7 +165,13 @@ def test_npm_backfill_uses_release_stream_dist_tag(tmp_path: Path, skip: str, ex
 
 @pytest.mark.parametrize(
     "version,current,update",
-    [("1.0.3", "1.3.1.dev0", "false"), ("1.3.1", "1.3.1.dev0", "true"), ("1.10.0", "1.9.9.dev0", "true")],
+    [
+        ("1.0.3", "1.3.1.dev0", "false"),
+        ("1.3.1", "1.3.1.dev0", "true"),
+        ("1.10.0", "1.9.9.dev0", "true"),
+        ("1.3.2rc1", "1.3.1.dev0", "false"),
+        ("1.0.3rc1", "1.3.1.dev0", "false"),
+    ],
 )
 def test_old_release_does_not_change_main_version(tmp_path: Path, version: str, current: str, update: str) -> None:
     result, outputs = _run(
