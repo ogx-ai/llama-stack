@@ -309,3 +309,47 @@ test("surfaces HTTP failures from the Responses API", async () => {
   ).toBeInTheDocument();
   errorLog.mockRestore();
 });
+
+test("restores legacy chat settings and transcript when no response ID was saved", async () => {
+  localStorage.setItem(
+    "chat-playground-session-data-chat-one-legacy",
+    JSON.stringify({
+      id: "legacy",
+      agentId: "chat-one",
+      name: "Agent One",
+      cachedAt: Date.now(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: [
+        {
+          id: "old-user",
+          role: "user",
+          content: "Old question",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "old-answer",
+          role: "assistant",
+          content: "Old answer",
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
+  );
+  SessionUtils.saveActiveSessionId("chat-one", "legacy");
+  mockFetch.mockResolvedValueOnce(
+    streamResponse("resp_migrated", "Continued answer")
+  );
+  render(<ChatPlaygroundPage />);
+  await ready();
+  await send("Follow up");
+  expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({
+    model: "model-1",
+    instructions: "Be concise.",
+    input: [
+      { role: "user", content: "Old question" },
+      { role: "assistant", content: "Old answer" },
+      { role: "user", content: "Follow up" },
+    ],
+  });
+});

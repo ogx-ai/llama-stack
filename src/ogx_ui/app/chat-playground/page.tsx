@@ -89,15 +89,18 @@ export default function ChatPlaygroundPage() {
     const cached = sessionId
       ? SessionUtils.loadSessionData(agent.agent_id, sessionId)
       : null;
-    const session = cached || {
-      ...SessionUtils.createDefaultSession(
-        agent.agent_id,
-        agent.agent_config?.model
-      ),
+    const session: ChatSession = {
+      ...(cached || SessionUtils.createDefaultSession(agent.agent_id)),
       name:
-        agent.agent_config?.name || agent.agent_config?.agent_name || "Chat",
+        cached?.name ||
+        agent.agent_config?.name ||
+        agent.agent_config?.agent_name ||
+        "Chat",
+      selectedModel: cached?.selectedModel || agent.agent_config?.model || "",
       systemMessage:
-        agent.agent_config?.instructions || "You are a helpful assistant.",
+        agent.agent_config?.instructions ||
+        cached?.systemMessage ||
+        "You are a helpful assistant.",
     };
     setSelectedAgentId(agent.agent_id);
     setCurrentSession(session);
@@ -356,6 +359,15 @@ export default function ChatPlaygroundPage() {
       };
       if (lastResponseIdRef.current) {
         body.previous_response_id = lastResponseIdRef.current;
+      } else if (currentSession?.messages.length) {
+        body.input = [
+          ...currentSession.messages
+            .filter(
+              message => message.role === "user" || message.role === "assistant"
+            )
+            .map(message => ({ role: message.role, content: message.content })),
+          { role: "user", content },
+        ];
       }
       body.instructions =
         currentSession?.systemMessage || "You are a helpful assistant.";

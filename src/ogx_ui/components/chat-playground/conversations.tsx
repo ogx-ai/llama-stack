@@ -125,13 +125,6 @@ export const SessionUtils = {
 
     try {
       const data = JSON.parse(cached);
-      // Check if cache is fresh (less than 1 hour old)
-      const cacheAge = Date.now() - (data.cachedAt || 0);
-      if (cacheAge > 60 * 60 * 1000) {
-        safeLocalStorage.removeItem(key);
-        return null;
-      }
-
       // Convert date strings back to Date objects
       return {
         ...data,

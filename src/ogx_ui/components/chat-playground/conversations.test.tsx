@@ -90,3 +90,17 @@ describe("SessionUtils", () => {
     });
   });
 });
+
+test("retains saved local sessions beyond the former cache lifetime", () => {
+  localStorageMock.getItem.mockReturnValue(
+    JSON.stringify({
+      ...SessionUtils.createDefaultSession("chat-one", "model-1"),
+      id: "session-one",
+      cachedAt: Date.now() - 2 * 60 * 60 * 1000,
+      responseId: "response-one",
+    })
+  );
+  expect(
+    SessionUtils.loadSessionData("chat-one", "session-one")?.responseId
+  ).toBe("response-one");
+});
