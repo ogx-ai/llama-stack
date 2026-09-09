@@ -224,9 +224,11 @@ Triggered via `workflow_dispatch` after publishing the matching clients. Takes a
 
 Triggered automatically after the `pypi.yml` workflow succeeds for a release event. Handles:
 
-- **Dev tag**: Tags `main` with `vX.Y.(Z+1)-dev` so setuptools-scm can infer versions
-- **Fallback bump**: Commits `fallback_version` bump to the next `.dev0` directly to `main`
+- **Dev tag**: Tags `main` with `vX.Y.(Z+1)-dev` when the released stable version is at least as new as main's current version
+- **Fallback bump**: Opens a PR to bump `fallback_version` to the next `.dev0` under the same condition
 - **npm lockfile**: Opens a PR to the release branch updating the UI lockfile
+
+Older maintenance releases leave main's version and dev tags unchanged while still updating their release-branch UI dependency.
 
 ### Nightly version computation
 
