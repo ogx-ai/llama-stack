@@ -114,7 +114,7 @@ interface StepStartPart {
   type: "step-start";
 }
 
-type MessagePart =
+export type MessagePart =
   | TextPart
   | ReasoningPart
   | ToolInvocationPart

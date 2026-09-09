@@ -30,16 +30,31 @@ async function proxyRequest(request: NextRequest, method: string) {
     });
 
     // Prepare the request options
-    const requestOptions: RequestInit = {
+    // `duplex` is required by Node's fetch() for ReadableStream bodies but isn't
+    // yet part of TypeScript's bundled RequestInit type.
+    const requestOptions: RequestInit & { duplex?: "half" } = {
       method,
       headers,
     };
 
     // Add body for methods that support it
     if (["POST", "PUT", "PATCH"].includes(method) && request.body) {
+<<<<<<< HEAD
       requestOptions.body = request.body;
       // Required for ReadableStream bodies in newer Node.js versions
       requestOptions.duplex = "half" as RequestDuplex;
+=======
+      if (isMultipart) {
+        // Buffer multipart bodies so content-length is accurate
+        const bodyBuffer = await request.arrayBuffer();
+        requestOptions.body = bodyBuffer;
+        headers.set("content-length", bodyBuffer.byteLength.toString());
+      } else {
+        requestOptions.body = request.body;
+        // Required for ReadableStream bodies in newer Node.js versions
+        requestOptions.duplex = "half";
+      }
+>>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
     }
 
     // Make the request to FastAPI backend

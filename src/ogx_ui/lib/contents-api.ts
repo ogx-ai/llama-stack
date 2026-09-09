@@ -1,7 +1,7 @@
 import type { FileContentResponse } from "llama-stack-client/resources/vector-stores/files";
 import type { LlamaStackClient } from "llama-stack-client";
 
-export type VectorStoreContent = FileContentResponse.Content;
+export type VectorStoreContent = FileContentResponse.Data;
 export type VectorStoreContentsResponse = FileContentResponse;
 
 export interface VectorStoreContentItem {
@@ -80,11 +80,20 @@ export class ContentsAPI {
     return targetContent;
   }
 
-  async updateContent(): Promise<VectorStoreContentItem> {
+  async updateContent(
+    vectorStoreId: string,
+    fileId: string,
+    contentId: string,
+    updates: { content?: string; metadata?: Record<string, unknown> }
+  ): Promise<VectorStoreContentItem> {
     throw new Error("Individual content updates not yet implemented in API");
   }
 
-  async deleteContent(): Promise<VectorStoreContentDeleteResponse> {
+  async deleteContent(
+    vectorStoreId: string,
+    fileId: string,
+    contentId: string
+  ): Promise<VectorStoreContentDeleteResponse> {
     throw new Error("Individual content deletion not yet implemented in API");
   }
 
@@ -108,6 +117,7 @@ export class ContentsAPI {
     );
     const contentItems: VectorStoreContentItem[] = [];
 
+<<<<<<< HEAD
     fileContents.content.forEach((content, contentIndex) => {
       const rawContent = content as Record<string, unknown>;
 
@@ -118,6 +128,11 @@ export class ContentsAPI {
         rawContent.created_at ||
         Date.now() / 1000;
       const chunkMetadata = rawContent.chunk_metadata || {};
+=======
+    (fileContents.data ?? []).forEach((item, contentIndex) => {
+      const raw = item as unknown as Record<string, unknown>;
+      const chunkMeta = (raw.chunk_metadata ?? {}) as Record<string, unknown>;
+>>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
       const contentId =
         rawContent.chunk_metadata?.chunk_id ||
         rawContent.id ||

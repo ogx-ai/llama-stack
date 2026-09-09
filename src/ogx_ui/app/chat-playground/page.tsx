@@ -29,6 +29,7 @@ type ModelWithMetadata = Model & {
   };
 };
 import {
+<<<<<<< HEAD
   SessionUtils,
   type ChatSession,
 } from "@/components/chat-playground/conversations";
@@ -36,6 +37,52 @@ import {
   cleanMessageContent,
   extractCleanText,
 } from "@/lib/message-content-utils";
+=======
+  addConversation,
+  getConversation,
+  removeConversation,
+  updateConversation,
+} from "@/lib/conversation-history";
+import { filterModels, parseModelAllowlist } from "@/lib/model-filter";
+
+const configuredModelIds = parseModelAllowlist(
+  process.env.NEXT_PUBLIC_OGX_UI_ALLOWED_MODELS
+);
+
+type ModelWithMeta = Model & {
+  custom_metadata?: Record<string, unknown> | null;
+};
+
+type VectorStoreInfo = {
+  id: string;
+  name: string;
+};
+
+type ToolsConfig = {
+  webSearch: boolean;
+  fileSearch: {
+    enabled: boolean;
+    vectorStoreIds: string[];
+  };
+  mcp: {
+    enabled: boolean;
+    serverLabel: string;
+    serverUrl: string;
+  };
+};
+
+type SimpleSession = {
+  id: string;
+  name: string;
+  messages: Message[];
+  selectedModel: string;
+  systemInstructions: string;
+  conversationId?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+>>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
 export default function ChatPlaygroundPage() {
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(
     null
@@ -789,6 +836,7 @@ export default function ChatPlaygroundPage() {
     fetchModels();
   }, [client, handleModelChange]);
 
+<<<<<<< HEAD
   // load agent sessions after both agents and models are ready
   useEffect(() => {
     if (
@@ -802,6 +850,129 @@ export default function ChatPlaygroundPage() {
     ) {
       loadAgentSessions(selectedAgentId);
     }
+=======
+  // Load vector stores for file search tool
+  useEffect(() => {
+    const fetchVectorStores = async () => {
+      try {
+        const result = await client.vectorStores.list({
+          limit: 100,
+          order: "desc",
+        });
+        const stores =
+          (result as unknown as { data?: Record<string, unknown>[] }).data ||
+          [];
+        setVectorStores(
+          stores.map((s: Record<string, unknown>) => ({
+            id: s.id as string,
+            name: (s.name as string) || (s.id as string),
+          }))
+        );
+      } catch {
+        // Vector stores may not be available — that's fine
+      }
+    };
+
+    fetchVectorStores();
+  }, [client]);
+
+  useEffect(() => {
+    if (selectedModel && !currentSession && !conversationParam) {
+      createNewSession();
+    }
+  }, [selectedModel, currentSession, createNewSession, conversationParam]);
+
+  // Load an existing conversation from URL param
+  useEffect(() => {
+    if (
+      !conversationParam ||
+      currentSession?.conversationId === conversationParam
+    )
+      return;
+
+    const loadConversation = async () => {
+      setLoadingConversation(true);
+      setError(null);
+
+      try {
+        // Restore saved config from localStorage
+        const saved = getConversation(conversationParam);
+        if (saved?.toolsConfig) {
+          setToolsConfig(saved.toolsConfig);
+        }
+        if (saved?.systemInstructions) {
+          setSystemInstructions(saved.systemInstructions);
+        }
+        if (saved?.model) {
+          setSelectedModel(saved.model);
+        }
+        const savedFileIdMap = saved?.fileIdMap;
+
+        // Fetch conversation items from API
+        const result = await client.conversations.items.list(conversationParam);
+        const itemList = Array.isArray(result)
+          ? result
+          : (result as unknown as { data?: Record<string, unknown>[] }).data ||
+            [];
+
+        // Convert items to messages
+        const messages: Message[] = [];
+        for (const item of itemList) {
+          const itemObj = item as Record<string, unknown>;
+          const role = itemObj.role as string;
+          if (role !== "user" && role !== "assistant") continue;
+
+          let text = "";
+          const content = itemObj.content;
+          if (typeof content === "string") {
+            text = content;
+          } else if (Array.isArray(content)) {
+            for (const part of content as Record<string, unknown>[]) {
+              if (part.text) text += part.text as string;
+            }
+          }
+          if (!text) continue;
+
+          const hasCitations = /<\|[^|]+\|>/.test(text);
+          messages.push({
+            id: (itemObj.id as string) || `${Date.now()}-${messages.length}`,
+            role,
+            content: text,
+            createdAt: new Date(),
+            ...(role === "assistant" &&
+              hasCitations &&
+              savedFileIdMap && { fileIdMap: savedFileIdMap }),
+          });
+        }
+
+        // Items come back newest-first — reverse to chronological order
+        messages.reverse();
+
+        setCurrentSession({
+          id: conversationParam,
+          name: "Loaded Conversation",
+          messages,
+          selectedModel: saved?.model || selectedModel || "",
+          systemInstructions: saved?.systemInstructions || systemInstructions,
+          conversationId: conversationParam,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      } catch (err) {
+        console.error("Failed to load conversation:", err);
+        setError(
+          "Failed to load conversation. It may have been deleted. Starting a new chat."
+        );
+        removeConversation(conversationParam);
+        router.replace("/chat-playground");
+        createNewSession();
+      } finally {
+        setLoadingConversation(false);
+      }
+    };
+
+    loadConversation();
+>>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
   }, [
     selectedAgentId,
     agentsLoading,
@@ -1070,6 +1241,7 @@ export default function ChatPlaygroundPage() {
       ): { text: string | null; isToolCall: boolean } => {
         const chunkObj = chunk as Record<string, unknown>;
 
+<<<<<<< HEAD
         // helper to check if content contains function call JSON
         const containsToolCall = (content: string): boolean => {
           return (
@@ -1079,6 +1251,9 @@ export default function ChatPlaygroundPage() {
             !!content.match(/\{"type":\s*"function".*?\}/)
           );
         };
+=======
+          const chunkObj = chunk as unknown as Record<string, unknown>;
+>>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
 
         let isToolCall = false;
         let potentialContent = "";
