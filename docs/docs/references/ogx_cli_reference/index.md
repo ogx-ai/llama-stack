@@ -30,7 +30,7 @@ You have two ways to install OGX:
 
 ## `ogx` subcommands
 
-1. `stack`: Allows you to build a stack using the `ogx` distribution and run a OGX server. You can read more about how to build a OGX distribution in the [Build your own Distribution](../../distributions/building_distro) documentation.
+1. `stack`: Allows you to build a stack using the `ogx` distribution and run a OGX server. You can read more about how to build a OGX distribution in the [Build your own Distribution](/docs/distributions/building_distro) documentation.
 
 For downloading models, we recommend using the [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/guides/cli). See [Downloading models](#downloading-models) for more information.
 
