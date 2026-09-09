@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import type { VectorStore } from "llama-stack-client/resources/vector-stores/vector-stores";
-import type { VectorStoreFile } from "llama-stack-client/resources/vector-stores/files";
+import type { VectorStore } from "ogx-client/resources/vector-stores/vector-stores";
+import type { VectorStoreFile } from "ogx-client/resources/vector-stores/files";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -232,11 +232,11 @@ export function VectorStoreDetailView({
       <PropertyItem label="Usage Bytes" value={store.usage_bytes} />
       <PropertyItem
         label="Provider ID"
-        value={(store.metadata.provider_id as string) || ""}
+        value={(store.metadata?.provider_id as string) || ""}
       />
       <PropertyItem
         label="Provider DB ID"
-        value={(store.metadata.provider_vector_db_id as string) || ""}
+        value={(store.metadata?.provider_vector_db_id as string) || ""}
       />
     </PropertiesCard>
   );
@@ -299,10 +299,11 @@ export function VectorStoreDetailView({
                 isEditing={true}
                 initialData={{
                   name: store?.name || "",
-                  embedding_model: store?.metadata?.embedding_model || "",
+                  embedding_model:
+                    (store?.metadata?.embedding_model as string) || "",
                   embedding_dimension:
-                    store?.metadata?.embedding_dimension || 768,
-                  provider_id: store?.metadata?.provider_id || "",
+                    (store?.metadata?.embedding_dimension as number) || 768,
+                  provider_id: (store?.metadata?.provider_id as string) || "",
                 }}
               />
             </div>

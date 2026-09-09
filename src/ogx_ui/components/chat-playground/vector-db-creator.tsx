@@ -12,10 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuthClient } from "@/hooks/use-auth-client";
-import type { Model } from "llama-stack-client/resources/models";
+import type { Model } from "ogx-client/resources/models";
 
 interface VectorDBCreatorProps {
-  models: Model[];
+  models: Pick<Model, "id" | "custom_metadata">[];
   onVectorDBCreated?: (vectorDbId: string) => void;
   onCancel?: () => void;
 }
@@ -43,7 +43,7 @@ export function VectorDBCreator({
   const client = useAuthClient();
 
   const embeddingModels = models.filter(
-    model => model.model_type === "embedding"
+    model => model.custom_metadata?.model_type === "embedding"
   );
 
   useEffect(() => {
@@ -94,14 +94,14 @@ export function VectorDBCreator({
 
     try {
       const embeddingModel = embeddingModels.find(
-        m => m.identifier === selectedEmbeddingModel
+        m => m.id === selectedEmbeddingModel
       );
 
       if (!embeddingModel) {
         throw new Error("Selected embedding model not found");
       }
 
-      const embeddingDimension = embeddingModel.metadata
+      const embeddingDimension = embeddingModel.custom_metadata
         ?.embedding_dimension as number;
 
       if (!embeddingDimension) {
@@ -110,14 +110,14 @@ export function VectorDBCreator({
 
       const vectorDbId = vectorDbName.trim() || `vector_db_${Date.now()}`;
 
-      const response = await client.vectorDBs.register({
-        vector_db_id: vectorDbId,
+      const response = await client.vectorStores.create({
+        name: vectorDbId,
         embedding_model: selectedEmbeddingModel,
         embedding_dimension: embeddingDimension,
         provider_id: selectedProvider,
       });
 
-      onVectorDBCreated?.(response.identifier || vectorDbId);
+      onVectorDBCreated?.(response.id);
     } catch (err) {
       console.error("Error creating vector DB:", err);
       setError(
@@ -157,8 +157,8 @@ export function VectorDBCreator({
             </SelectTrigger>
             <SelectContent>
               {embeddingModels.map(model => (
-                <SelectItem key={model.identifier} value={model.identifier}>
-                  {model.identifier}
+                <SelectItem key={model.id} value={model.id}>
+                  {model.id}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -166,9 +166,13 @@ export function VectorDBCreator({
           {selectedEmbeddingModel && (
             <p className="text-xs text-muted-foreground mt-1">
               Dimension:{" "}
-              {embeddingModels.find(
-                m => m.identifier === selectedEmbeddingModel
-              )?.metadata?.embedding_dimension || "Unknown"}
+              {embeddingModels.find(m => m.id === selectedEmbeddingModel)
+                ?.custom_metadata?.embedding_dimension
+                ? String(
+                    embeddingModels.find(m => m.id === selectedEmbeddingModel)
+                      ?.custom_metadata?.embedding_dimension
+                  )
+                : "Unknown"}
             </p>
           )}
         </div>
