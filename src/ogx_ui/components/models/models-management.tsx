@@ -64,7 +64,8 @@ export function ModelsManagement() {
               unknown
             >[])
           : [];
-      const items = raw.map((m: Record<string, unknown>) => {
+      const items = raw.map(item => {
+        const m = item as unknown as Record<string, unknown>;
         const meta = (m.custom_metadata ?? {}) as Record<string, unknown>;
         return {
           ...m,

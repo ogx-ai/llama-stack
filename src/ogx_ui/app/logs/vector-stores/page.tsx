@@ -1,14 +1,10 @@
 "use client";
 
 import React from "react";
-<<<<<<< HEAD
 import type {
   ListVectorStoresResponse,
   VectorStore,
-} from "llama-stack-client/resources/vector-stores/vector-stores";
-=======
-import type { VectorStore } from "ogx-client/resources/vector-stores/vector-stores";
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
+} from "ogx-client/resources/vector-stores/vector-stores";
 import { useRouter } from "next/navigation";
 import { usePagination } from "@/hooks/use-pagination";
 import { Button } from "@/components/ui/button";

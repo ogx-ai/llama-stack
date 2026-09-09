@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import type { ResponseObject } from "llama-stack-client/resources/responses/responses";
+import type { ResponseObject } from "ogx-client/resources/responses/responses";
 import { OpenAIResponse, InputItemListResponse } from "@/lib/types";
 import { ResponseDetailView } from "@/components/responses/responses-detail";
 import { useAuthClient } from "@/hooks/use-auth-client";
@@ -36,10 +36,10 @@ export default function ResponseDetailPage() {
       output: responseData.output as OpenAIResponse["output"],
       input: [], // ResponseObject doesn't include input; component uses inputItems prop instead
       error: responseData.error ?? undefined,
-      parallel_tool_calls: responseData.parallel_tool_calls,
+      parallel_tool_calls: responseData.parallel_tool_calls ?? undefined,
       previous_response_id: responseData.previous_response_id ?? undefined,
-      temperature: responseData.temperature,
-      top_p: responseData.top_p,
+      temperature: responseData.temperature ?? undefined,
+      top_p: responseData.top_p ?? undefined,
       truncation: responseData.truncation ?? undefined,
     };
   };

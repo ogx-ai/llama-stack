@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuthClient } from "@/hooks/use-auth-client";
-import type { Model } from "llama-stack-client/resources/models";
+import type { Model } from "ogx-client/resources/models";
 
 export interface VectorStoreFormData {
   name: string;
@@ -49,7 +49,9 @@ export function VectorStoreEditor({
     }
   );
   const [loading, setLoading] = useState(false);
-  const [models, setModels] = useState<Model[]>([]);
+  const [models, setModels] = useState<Pick<Model, "id" | "custom_metadata">[]>(
+    []
+  );
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
 
@@ -62,7 +64,12 @@ export function VectorStoreEditor({
       try {
         setModelsLoading(true);
         setModelsError(null);
-        const modelList = await client.models.list();
+        const modelResponse = await client.models.list();
+        const modelList = Array.isArray(modelResponse)
+          ? modelResponse
+          : "data" in modelResponse
+            ? modelResponse.data
+            : [];
         setModels(modelList);
 
         // Set default embedding model if available

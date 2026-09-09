@@ -1,6 +1,6 @@
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
-import LlamaStackClient from "llama-stack-client";
+import OGXClient, { type ClientOptions } from "ogx-client";
 
 export function useAuthClient() {
   const { data: session } = useSession();
@@ -9,7 +9,7 @@ export function useAuthClient() {
     const clientHostname =
       typeof window !== "undefined" ? window.location.origin : "";
 
-    const options: any = {
+    const options: ClientOptions = {
       baseURL: `${clientHostname}/api`,
     };
 
@@ -17,7 +17,7 @@ export function useAuthClient() {
       options.apiKey = session.accessToken;
     }
 
-    return new LlamaStackClient(options);
+    return new OGXClient(options);
   }, [session?.accessToken]);
 
   return client;

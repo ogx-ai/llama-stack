@@ -7,7 +7,7 @@ import {
 } from "@/lib/types";
 import { LogsTable, LogTableRow } from "@/components/logs/logs-table";
 import { usePagination } from "@/hooks/use-pagination";
-import type { ResponseListResponse } from "llama-stack-client/resources/responses/responses";
+import type { ResponseListResponse } from "ogx-client/resources/responses/responses";
 import {
   isMessageInput,
   isMessageItem,
@@ -37,10 +37,10 @@ const convertResponseListData = (
     output: responseData.output as OpenAIResponse["output"],
     input: responseData.input as OpenAIResponse["input"],
     error: responseData.error ?? undefined,
-    parallel_tool_calls: responseData.parallel_tool_calls,
+    parallel_tool_calls: responseData.parallel_tool_calls ?? undefined,
     previous_response_id: responseData.previous_response_id ?? undefined,
-    temperature: responseData.temperature,
-    top_p: responseData.top_p,
+    temperature: responseData.temperature ?? undefined,
+    top_p: responseData.top_p ?? undefined,
     truncation: responseData.truncation ?? undefined,
   };
 };

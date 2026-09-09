@@ -3,11 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthClient } from "@/hooks/use-auth-client";
-<<<<<<< HEAD
-import { ContentsAPI, VectorStoreContentItem } from "@/lib/contents-api";
-import type { VectorStore } from "llama-stack-client/resources/vector-stores/vector-stores";
-import type { VectorStoreFile } from "llama-stack-client/resources/vector-stores/files";
-=======
 import {
   ContentsAPI,
   VectorStoreContent,
@@ -15,7 +10,6 @@ import {
 } from "@/lib/contents-api";
 import type { VectorStore } from "ogx-client/resources/vector-stores/vector-stores";
 import type { VectorStoreFile } from "ogx-client/resources/vector-stores/files";
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";

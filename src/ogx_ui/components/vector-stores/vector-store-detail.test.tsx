@@ -2,8 +2,8 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { VectorStoreDetailView } from "./vector-store-detail";
-import type { VectorStore } from "llama-stack-client/resources/vector-stores/vector-stores";
-import type { VectorStoreFile } from "llama-stack-client/resources/vector-stores/files";
+import type { VectorStore } from "ogx-client/resources/vector-stores/vector-stores";
+import type { VectorStoreFile } from "ogx-client/resources/vector-stores/files";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -167,35 +167,6 @@ describe("VectorStoreDetailView", () => {
         provider_vector_db_id: "test_db_id",
       },
     };
-<<<<<<< HEAD
-=======
-    const mockFiles: VectorStoreFile[] = [
-      {
-        id: "file_1",
-        status: "completed",
-        created_at: 1710000001,
-        usage_bytes: 0,
-        vector_store_id: "vs_123",
-        chunking_strategy: { static: {}, type: "static" },
-      },
-      {
-        id: "file_2",
-        status: "completed",
-        created_at: 1710000002,
-        usage_bytes: 0,
-        vector_store_id: "vs_123",
-        chunking_strategy: { static: {}, type: "static" },
-      },
-      {
-        id: "file_3",
-        status: "completed",
-        created_at: 1710000003,
-        usage_bytes: 0,
-        vector_store_id: "vs_123",
-        chunking_strategy: { static: {}, type: "static" },
-      },
-    ];
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
 
     test("renders store properties correctly", () => {
       render(<VectorStoreDetailView {...defaultProps} store={mockStore} />);
@@ -382,19 +353,6 @@ describe("VectorStoreDetailView", () => {
       usage_bytes: 1024,
       metadata: {},
     };
-<<<<<<< HEAD
-=======
-    const mockFiles: VectorStoreFile[] = [
-      {
-        id: "file_layout",
-        status: "completed",
-        created_at: 1710000001,
-        usage_bytes: 0,
-        vector_store_id: "vs_layout_test",
-        chunking_strategy: { static: {}, type: "static" },
-      },
-    ];
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
 
     test("renders main content and sidebar in correct layout", () => {
       render(<VectorStoreDetailView {...defaultProps} store={mockStore} />);

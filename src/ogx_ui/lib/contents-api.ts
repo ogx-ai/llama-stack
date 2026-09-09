@@ -1,5 +1,5 @@
-import type { FileContentResponse } from "llama-stack-client/resources/vector-stores/files";
-import type { LlamaStackClient } from "llama-stack-client";
+import type { FileContentResponse } from "ogx-client/resources/vector-stores/files";
+import type OGXClient from "ogx-client";
 
 export type VectorStoreContent = FileContentResponse.Data;
 export type VectorStoreContentsResponse = FileContentResponse;
@@ -30,7 +30,7 @@ export interface VectorStoreListContentsResponse {
 }
 
 export class ContentsAPI {
-  constructor(private client: LlamaStackClient) {}
+  constructor(private client: OGXClient) {}
 
   async getFileContents(
     vectorStoreId: string,
@@ -117,9 +117,8 @@ export class ContentsAPI {
     );
     const contentItems: VectorStoreContentItem[] = [];
 
-<<<<<<< HEAD
-    fileContents.content.forEach((content, contentIndex) => {
-      const rawContent = content as Record<string, unknown>;
+    fileContents.data.forEach((content, contentIndex) => {
+      const rawContent = content as unknown as Record<string, unknown>;
 
       // Extract actual fields from the API response
       const embedding = rawContent.embedding as number[] | undefined;
@@ -127,21 +126,16 @@ export class ContentsAPI {
         rawContent.created_timestamp ||
         rawContent.created_at ||
         Date.now() / 1000;
-      const chunkMetadata = rawContent.chunk_metadata || {};
-=======
-    (fileContents.data ?? []).forEach((item, contentIndex) => {
-      const raw = item as unknown as Record<string, unknown>;
-      const chunkMeta = (raw.chunk_metadata ?? {}) as Record<string, unknown>;
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
+      const chunkMetadata = content.chunk_metadata || {};
       const contentId =
-        rawContent.chunk_metadata?.chunk_id ||
+        chunkMetadata.chunk_id ||
         rawContent.id ||
         `content_${fileId}_${contentIndex}`;
       const objectType = rawContent.object || "vector_store.file.content";
       contentItems.push({
-        id: contentId,
-        object: objectType,
-        created_timestamp: created_timestamp,
+        id: String(contentId),
+        object: String(objectType),
+        created_timestamp: Number(created_timestamp),
         vector_store_id: vectorStoreId,
         file_id: fileId,
         content: content,

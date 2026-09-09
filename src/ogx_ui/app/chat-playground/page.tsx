@@ -17,11 +17,10 @@ import { Chat } from "@/components/chat-playground/chat";
 import { type Message } from "@/components/chat-playground/chat-message";
 import { VectorDBCreator } from "@/components/chat-playground/vector-db-creator";
 import { useAuthClient } from "@/hooks/use-auth-client";
-import type { Model } from "llama-stack-client/resources/models";
-import type { TurnCreateParams } from "llama-stack-client/resources/agents/turn";
+import type { Model } from "ogx-client/resources/models";
 
 // Extended Model type to include properties from API response
-type ModelWithMetadata = Model & {
+type ModelWithMetadata = Pick<Model, "id" | "custom_metadata"> & {
   id: string;
   custom_metadata?: {
     model_type?: string;
@@ -29,60 +28,10 @@ type ModelWithMetadata = Model & {
   };
 };
 import {
-<<<<<<< HEAD
   SessionUtils,
   type ChatSession,
+  type ChatAgent,
 } from "@/components/chat-playground/conversations";
-import {
-  cleanMessageContent,
-  extractCleanText,
-} from "@/lib/message-content-utils";
-=======
-  addConversation,
-  getConversation,
-  removeConversation,
-  updateConversation,
-} from "@/lib/conversation-history";
-import { filterModels, parseModelAllowlist } from "@/lib/model-filter";
-
-const configuredModelIds = parseModelAllowlist(
-  process.env.NEXT_PUBLIC_OGX_UI_ALLOWED_MODELS
-);
-
-type ModelWithMeta = Model & {
-  custom_metadata?: Record<string, unknown> | null;
-};
-
-type VectorStoreInfo = {
-  id: string;
-  name: string;
-};
-
-type ToolsConfig = {
-  webSearch: boolean;
-  fileSearch: {
-    enabled: boolean;
-    vectorStoreIds: string[];
-  };
-  mcp: {
-    enabled: boolean;
-    serverLabel: string;
-    serverUrl: string;
-  };
-};
-
-type SimpleSession = {
-  id: string;
-  name: string;
-  messages: Message[];
-  selectedModel: string;
-  systemInstructions: string;
-  conversationId?: string;
-  createdAt: number;
-  updatedAt: number;
-};
-
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
 export default function ChatPlaygroundPage() {
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(
     null
@@ -90,21 +39,13 @@ export default function ChatPlaygroundPage() {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [models, setModels] = useState<Model[]>([]);
+  const [models, setModels] = useState<Pick<Model, "id" | "custom_metadata">[]>(
+    []
+  );
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
-  const [agents, setAgents] = useState<
-    Array<{
-      agent_id: string;
-      agent_config?: {
-        agent_name?: string;
-        name?: string;
-        instructions?: string;
-      };
-      [key: string]: unknown;
-    }>
-  >([]);
+  const [agents, setAgents] = useState<ChatAgent[]>([]);
   const [selectedAgentConfig, setSelectedAgentConfig] = useState<{
     toolgroups?: Array<
       string | { name: string; args: Record<string, unknown> }
@@ -118,14 +59,10 @@ export default function ChatPlaygroundPage() {
     "You are a helpful assistant."
   );
   const [selectedToolgroups, setSelectedToolgroups] = useState<string[]>([]);
-  const [availableToolgroups, setAvailableToolgroups] = useState<
-    Array<{
-      identifier: string;
-      provider_id: string;
-      type: string;
-      provider_resource_id?: string;
-    }>
-  >([]);
+  const availableToolgroups = [
+    { identifier: "builtin::websearch", provider_id: "web_search" },
+    { identifier: "builtin::file_search", provider_id: "file_search" },
+  ];
   const [showCreateVectorDB, setShowCreateVectorDB] = useState(false);
   const [availableVectorDBs, setAvailableVectorDBs] = useState<
     Array<{
@@ -146,634 +83,140 @@ export default function ChatPlaygroundPage() {
 
   const isModelsLoading = modelsLoading ?? true;
 
-  const loadAgentConfig = useCallback(
-    async (agentId: string) => {
-      try {
-        // try to load from cache first
-        const cachedConfig = SessionUtils.loadAgentConfig(agentId);
-        if (cachedConfig) {
-          setSelectedAgentConfig({
-            toolgroups: cachedConfig.toolgroups,
-          });
-          return;
-        }
-
-        const agentDetails = await client.agents.retrieve(agentId);
-
-        // cache config
-        SessionUtils.saveAgentConfig(agentId, {
-          ...agentDetails.agent_config,
-          toolgroups: agentDetails.agent_config?.toolgroups,
-        });
-
-        setSelectedAgentConfig({
-          toolgroups: agentDetails.agent_config?.toolgroups,
-        });
-      } catch (error) {
-        console.error("Error loading agent config:", error);
-        setSelectedAgentConfig(null);
-      }
-    },
-    [client]
-  );
-
-  const createDefaultSession = useCallback(
-    async (agentId: string) => {
-      try {
-        const response = await client.agents.session.create(agentId, {
-          session_name: "Default Session",
-        });
-
-        const defaultSession: ChatSession = {
-          id: response.session_id,
-          name: "Default Session",
-          messages: [],
-          selectedModel: selectedModel, // use current selected model
-          systemMessage: "You are a helpful assistant.",
-          agentId,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-
-        setCurrentSession(defaultSession);
-        SessionUtils.saveCurrentSessionId(defaultSession.id, agentId);
-        // cache entire session data
-        SessionUtils.saveSessionData(agentId, defaultSession);
-      } catch (error) {
-        console.error("Error creating default session:", error);
-      }
-    },
-    [client, selectedModel]
-  );
-
-  const loadSessionMessages = useCallback(
-    async (agentId: string, sessionId: string): Promise<Message[]> => {
-      try {
-        const session = await client.agents.session.retrieve(
-          agentId,
-          sessionId
-        );
-
-        if (!session || !session.turns || !Array.isArray(session.turns)) {
-          return [];
-        }
-
-        const messages: Message[] = [];
-        for (const turn of session.turns) {
-          if (turn.input_messages && Array.isArray(turn.input_messages)) {
-            for (const input of turn.input_messages) {
-              if (input.role === "user" && input.content) {
-                messages.push({
-                  id: `${turn.turn_id}-user-${messages.length}`,
-                  role: "user",
-                  content:
-                    typeof input.content === "string"
-                      ? input.content
-                      : JSON.stringify(input.content),
-                  createdAt: new Date(turn.started_at || Date.now()),
-                });
-              }
-            }
-          }
-
-          if (turn.output_message && turn.output_message.content) {
-            console.log("Raw message content:", turn.output_message.content);
-            console.log("Content type:", typeof turn.output_message.content);
-
-            const cleanContent = cleanMessageContent(
-              turn.output_message.content
-            );
-
-            messages.push({
-              id: `${turn.turn_id}-assistant-${messages.length}`,
-              role: "assistant",
-              content: cleanContent,
-              createdAt: new Date(
-                turn.completed_at || turn.started_at || Date.now()
-              ),
-            });
-          }
-        }
-
-        return messages;
-      } catch (error) {
-        console.error("Error loading session messages:", error);
-        return [];
-      }
-    },
-    [client]
-  );
-
-  const loadAgentSessions = useCallback(
-    async (agentId: string) => {
-      try {
-        const response = await client.agents.session.list(agentId);
-
-        if (
-          response.data &&
-          Array.isArray(response.data) &&
-          response.data.length > 0
-        ) {
-          // check for saved session ID for this agent
-          const savedSessionId = SessionUtils.loadCurrentSessionId(agentId);
-          // try to load cached agent session data first
-          if (savedSessionId) {
-            const cachedSession = SessionUtils.loadSessionData(
-              agentId,
-              savedSessionId
-            );
-            if (cachedSession) {
-              setCurrentSession(cachedSession);
-              SessionUtils.saveCurrentSessionId(cachedSession.id, agentId);
-              return;
-            }
-            console.log("📡 Cache miss, fetching session from API...");
-          }
-
-          let sessionToLoad = response.data[0] as {
-            session_id: string;
-            session_name?: string;
-            started_at?: string;
-          };
-          console.log(
-            "Default session to load (first in list):",
-            sessionToLoad.session_id
-          );
-
-          // try to find saved session id in available sessions
-          if (savedSessionId) {
-            const foundSession = response.data.find(
-              (s: { [key: string]: unknown }) =>
-                (s as { session_id: string }).session_id === savedSessionId
-            );
-            console.log("Found saved session in list:", foundSession);
-            if (foundSession) {
-              sessionToLoad = foundSession as {
-                session_id: string;
-                session_name?: string;
-                started_at?: string;
-              };
-              console.log(
-                "✅ Restored previously selected session:",
-                savedSessionId
-              );
-            } else {
-              console.log(
-                "❌ Previously selected session not found, using latest session"
-              );
-            }
-          } else {
-            console.log("❌ No saved session ID found, using latest session");
-          }
-
-          const messages = await loadSessionMessages(
-            agentId,
-            sessionToLoad.session_id
-          );
-
-          const session: ChatSession = {
-            id: sessionToLoad.session_id,
-            name: sessionToLoad.session_name || "Session",
-            messages,
-            selectedModel: selectedModel || "",
-            systemMessage: "You are a helpful assistant.",
-            agentId,
-            createdAt: sessionToLoad.started_at
-              ? new Date(sessionToLoad.started_at).getTime()
-              : Date.now(),
-            updatedAt: Date.now(),
-          };
-
-          setCurrentSession(session);
-          console.log(`💾 Saving session ID for agent ${agentId}:`, session.id);
-          SessionUtils.saveCurrentSessionId(session.id, agentId);
-          // cache session data
-          SessionUtils.saveSessionData(agentId, session);
-        } else {
-          // no sessions, create a new one
-          await createDefaultSession(agentId);
-        }
-      } catch (error) {
-        console.error("Error loading agent sessions:", error);
-        // fallback to creating a new session
-        await createDefaultSession(agentId);
-      }
-    },
-    [client, loadSessionMessages, createDefaultSession, selectedModel]
-  );
+  const selectAgent = useCallback((agent: ChatAgent) => {
+    abortControllerRef.current?.abort();
+    const sessionId = SessionUtils.loadActiveSessionId(agent.agent_id);
+    const cached = sessionId
+      ? SessionUtils.loadSessionData(agent.agent_id, sessionId)
+      : null;
+    const session = cached || {
+      ...SessionUtils.createDefaultSession(
+        agent.agent_id,
+        agent.agent_config?.model
+      ),
+      name:
+        agent.agent_config?.name || agent.agent_config?.agent_name || "Chat",
+      systemMessage:
+        agent.agent_config?.instructions || "You are a helpful assistant.",
+    };
+    setSelectedAgentId(agent.agent_id);
+    setCurrentSession(session);
+    setSelectedAgentConfig({
+      toolgroups: agent.agent_config?.toolgroups || [],
+    });
+    if (session.selectedModel) setSelectedModel(session.selectedModel);
+    lastResponseIdRef.current = session.responseId || null;
+    setError(null);
+    SessionUtils.saveCurrentAgentId(agent.agent_id);
+    SessionUtils.saveActiveSessionId(agent.agent_id, session.id);
+  }, []);
 
   useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        setAgentsLoading(true);
-        const agentList = await client.agents.list();
-        setAgents(
-          (agentList.data as Array<{
-            agent_id: string;
-            agent_config?: {
-              agent_name?: string;
-              name?: string;
-              instructions?: string;
-            };
-            [key: string]: unknown;
-          }>) || []
-        );
-
-        if (agentList.data && agentList.data.length > 0) {
-          // check if there's a previously selected agent
-          const savedAgentId = SessionUtils.loadCurrentAgentId();
-
-          let agentToSelect = agentList.data[0] as {
-            agent_id: string;
-            agent_config?: {
-              agent_name?: string;
-              name?: string;
-              instructions?: string;
-            };
-            [key: string]: unknown;
-          };
-
-          // if we have a saved agent ID, find it in the available agents
-          if (savedAgentId) {
-            const foundAgent = agentList.data.find(
-              (a: { [key: string]: unknown }) =>
-                (a as { agent_id: string }).agent_id === savedAgentId
-            );
-            if (foundAgent) {
-              agentToSelect = foundAgent as typeof agentToSelect;
-            } else {
-              console.log("Previously slelected agent not found:");
-            }
-          }
-          setSelectedAgentId(agentToSelect.agent_id);
-          SessionUtils.saveCurrentAgentId(agentToSelect.agent_id);
-          // load agent config immediately
-          await loadAgentConfig(agentToSelect.agent_id);
-          // Note: loadAgentSessions will be called after models are loaded
-        }
-      } catch (error) {
-        console.error("Error fetching agents (may be unavailable):", error);
-        // Agents API not available - load persisted local agents
-        const savedAgents = SessionUtils.loadAgentsList();
-        if (savedAgents.length > 0) {
-          setAgents(savedAgents);
-          const savedAgentId = SessionUtils.loadCurrentAgentId();
-          const agentToSelect =
-            savedAgentId && savedAgents.find(a => a.agent_id === savedAgentId)
-              ? savedAgentId
-              : savedAgents[0].agent_id;
-          setSelectedAgentId(agentToSelect);
-          // Load the saved session
-          const savedSessionId =
-            SessionUtils.loadActiveSessionId(agentToSelect);
-          if (savedSessionId) {
-            const savedSession = SessionUtils.loadSessionData(
-              agentToSelect,
-              savedSessionId
-            );
-            if (savedSession) {
-              setCurrentSession(savedSession);
-              lastResponseIdRef.current = null;
-              // Load instructions
-              const agent = savedAgents.find(a => a.agent_id === agentToSelect);
-              if (agent?.agent_config?.instructions) {
-                setNewAgentInstructions(agent.agent_config.instructions);
-              }
-            }
-          }
-          if (!currentSession) {
-            // No saved session found, create a fresh one
-            const sessionId = `session-${Date.now()}`;
-            const localSession: ChatSession = {
-              id: sessionId,
-              agentId: agentToSelect,
-              name:
-                savedAgents.find(a => a.agent_id === agentToSelect)
-                  ?.agent_config?.name || "Chat",
-              messages: [],
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            };
-            setCurrentSession(localSession);
-            SessionUtils.saveActiveSessionId(agentToSelect, sessionId);
-            lastResponseIdRef.current = null;
-          }
-        } else {
-          // No saved agents - create a default one
-          const defaultAgent = {
-            agent_id: `chat-${Date.now()}`,
-            agent_config: {
-              name: "New Chat",
-              instructions: "You are a helpful assistant.",
-            },
-          };
-          setAgents([defaultAgent]);
-          SessionUtils.saveAgentsList([defaultAgent]);
-          setSelectedAgentId(defaultAgent.agent_id);
-          SessionUtils.saveCurrentAgentId(defaultAgent.agent_id);
-          const sessionId = `session-${Date.now()}`;
-          const localSession: ChatSession = {
-            id: sessionId,
-            agentId: defaultAgent.agent_id,
+    let savedAgents = SessionUtils.loadAgentsList();
+    if (savedAgents.length === 0) {
+      savedAgents = [
+        {
+          agent_id: `chat-${crypto.randomUUID()}`,
+          agent_config: {
             name: "New Chat",
-            messages: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          setCurrentSession(localSession);
-          SessionUtils.saveActiveSessionId(defaultAgent.agent_id, sessionId);
-          lastResponseIdRef.current = null;
-        }
-      } finally {
-        setAgentsLoading(false);
-      }
-    };
+            instructions: "You are a helpful assistant.",
+          },
+        },
+      ];
+      SessionUtils.saveAgentsList(savedAgents);
+    }
+    setAgents(savedAgents);
+    const savedId = SessionUtils.loadCurrentAgentId();
+    selectAgent(
+      savedAgents.find(agent => agent.agent_id === savedId) || savedAgents[0]
+    );
+    setAgentsLoading(false);
+  }, [selectAgent]);
 
-    fetchAgents();
+  const refreshVectorStores = useCallback(async () => {
+    try {
+      const stores = await client.vectorStores.list();
+      setAvailableVectorDBs(
+        stores.data.map(store => ({
+          identifier: store.id,
+          vector_db_name: store.name || store.id,
+          embedding_model: String(store.metadata?.embedding_model || ""),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load vector stores:", error);
+    }
+  }, [client]);
 
-    const fetchToolgroups = async () => {
-      try {
-        const toolgroups = await client.toolgroups.list();
-
-        const toolGroupsArray = Array.isArray(toolgroups)
-          ? toolgroups
-          : toolgroups &&
-              typeof toolgroups === "object" &&
-              "data" in toolgroups &&
-              Array.isArray((toolgroups as { data: unknown }).data)
-            ? (
-                toolgroups as {
-                  data: Array<{
-                    identifier: string;
-                    provider_id: string;
-                    type: string;
-                    provider_resource_id?: string;
-                  }>;
-                }
-              ).data
-            : [];
-
-        if (toolGroupsArray && Array.isArray(toolGroupsArray)) {
-          setAvailableToolgroups(toolGroupsArray);
-        } else {
-          console.error("Invalid toolgroups data format:", toolgroups);
-        }
-      } catch (error) {
-        console.error(
-          "Error fetching toolgroups, falling back to /v1/tools:",
-          error
-        );
-        // Fallback: fetch individual tools and present them as toolgroups
-        try {
-          const res = await fetch("/api/v1/tools");
-          if (res.ok) {
-            const data = await res.json();
-            const tools = Array.isArray(data) ? data : (data.data ?? []);
-            const toolsAsToolgroups = tools.map(
-              (t: Record<string, unknown>) => ({
-                identifier: (t.identifier ??
-                  t.tool_name ??
-                  t.name ??
-                  "") as string,
-                provider_id: (t.provider_id ?? "") as string,
-                type: "tool",
-                provider_resource_id: (t.provider_resource_id ?? "") as string,
-              })
-            );
-            setAvailableToolgroups(toolsAsToolgroups);
-          }
-        } catch {
-          // both failed, leave empty
-        }
-      }
-    };
-
-    fetchToolgroups();
-
-    const fetchVectorDBs = async () => {
-      try {
-        const vectorDBs = await client.vectorDBs.list();
-
-        const vectorDBsArray = Array.isArray(vectorDBs) ? vectorDBs : [];
-
-        if (vectorDBsArray && Array.isArray(vectorDBsArray)) {
-          setAvailableVectorDBs(vectorDBsArray);
-        } else {
-          console.error("Invalid vector DBs data format:", vectorDBs);
-        }
-      } catch (error) {
-        console.error("Error fetching vector DBs:", error);
-      }
-    };
-
-    fetchVectorDBs();
-  }, [client, loadAgentSessions, loadAgentConfig]);
+  useEffect(() => {
+    void refreshVectorStores();
+  }, [refreshVectorStores]);
 
   const createNewAgent = useCallback(
     async (
       name: string,
       instructions: string,
       model: string,
-      _toolgroups: string[] = [],
-      _vectorDBs: string[] = []
+      toolgroups: string[] = [],
+      vectorStoreIds: string[] = []
     ) => {
-      // Create a local responses-mode chat session
-      const agentId = `chat-${Date.now()}`;
-      const sessionId = `session-${Date.now()}`;
-
-      if (model) {
-        setSelectedModel(model);
-      }
-      setNewAgentInstructions(instructions);
-
-      const newAgent = {
-        agent_id: agentId,
+      const agent: ChatAgent = {
+        agent_id: `chat-${crypto.randomUUID()}`,
         agent_config: {
           name: name || "New Chat",
           instructions,
+          model,
+          toolgroups: toolgroups.map(tool =>
+            tool.includes("file_search")
+              ? { name: tool, args: { vector_db_ids: vectorStoreIds } }
+              : tool
+          ),
         },
       };
-
-      setAgents(prev => {
-        const updated = [...prev, newAgent];
+      setAgents(previous => {
+        const updated = [...previous, agent];
         SessionUtils.saveAgentsList(updated);
         return updated;
       });
-
-      const localSession: ChatSession = {
-        id: sessionId,
-        agentId,
-        name: name || "New Chat",
-        messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      setSelectedAgentId(agentId);
-      setCurrentSession(localSession);
-      lastResponseIdRef.current = null;
-      SessionUtils.saveCurrentAgentId(agentId);
-      SessionUtils.saveActiveSessionId(agentId, sessionId);
-      SessionUtils.saveSessionData(agentId, localSession);
-
-      return agentId;
+      selectAgent(agent);
+      return agent.agent_id;
     },
-    []
+    [selectAgent]
   );
 
   const handleVectorDBCreated = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async (_vectorDbId: string) => {
+    async (vectorStoreId: string) => {
       setShowCreateVectorDB(false);
-
-      try {
-        const vectorDBs = await client.vectorDBs.list();
-        const vectorDBsArray = Array.isArray(vectorDBs) ? vectorDBs : [];
-
-        if (vectorDBsArray && Array.isArray(vectorDBsArray)) {
-          setAvailableVectorDBs(vectorDBsArray);
-        }
-      } catch (error) {
-        console.error("Error refreshing vector DBs:", error);
-      }
+      setSelectedVectorDBs(previous => [...previous, vectorStoreId]);
+      await refreshVectorStores();
     },
-    [client]
+    [refreshVectorStores]
   );
 
   const deleteAgent = useCallback(
-    async (agentId: string) => {
+    (agentId: string) => {
       if (
-        confirm(
+        !confirm(
           "Are you sure you want to delete this agent? This action cannot be undone and will delete the agent and all its sessions."
         )
-      ) {
-        try {
-          // there's a known error where the delete API returns 500 even on success
-          try {
-            await client.agents.delete(agentId);
-            console.log("Agent deleted successfully");
-          } catch (deleteError) {
-            // log the error but don't re-throw - we know deletion succeeded
-            console.log(
-              "Agent delete API returned error (but deletion likely succeeded):",
-              deleteError
-            );
-          }
-
-          SessionUtils.clearAgentCache(agentId);
-
-          const agentList = await client.agents.list();
-          setAgents(
-            (agentList.data as Array<{
-              agent_id: string;
-              agent_config?: {
-                agent_name?: string;
-                name?: string;
-                instructions?: string;
-              };
-              [key: string]: unknown;
-            }>) || []
-          );
-
-          // if we delete current agent, switch to another
-          if (selectedAgentId === agentId) {
-            const remainingAgents = agentList.data?.filter(
-              (a: { [key: string]: unknown }) =>
-                (a as { agent_id: string }).agent_id !== agentId
-            );
-            if (remainingAgents && remainingAgents.length > 0) {
-              const newAgent = remainingAgents[0] as {
-                agent_id: string;
-                agent_config?: {
-                  agent_name?: string;
-                  name?: string;
-                  instructions?: string;
-                };
-                [key: string]: unknown;
-              };
-              setSelectedAgentId(newAgent.agent_id);
-              SessionUtils.saveCurrentAgentId(newAgent.agent_id);
-              await loadAgentConfig(newAgent.agent_id);
-              await loadAgentSessions(newAgent.agent_id);
-            } else {
-              // no agents left
-              setSelectedAgentId("");
-              setCurrentSession(null);
-              setSelectedAgentConfig(null);
-            }
-          }
-        } catch (error) {
-          console.error("Error deleting agent:", error);
-
-          // check if this is known server bug where deletion succeeds but returns 500
-          // The error message will typically contain status codes or "Could not find agent"
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          const isKnownServerBug =
-            errorMessage.includes("500") ||
-            errorMessage.includes("Internal Server Error") ||
-            errorMessage.includes("Could not find agent") ||
-            errorMessage.includes("400");
-
-          if (isKnownServerBug) {
-            console.log(
-              "Agent deletion succeeded despite error, cleaning up UI"
-            );
-            SessionUtils.clearAgentCache(agentId);
-            try {
-              const agentList = await client.agents.list();
-              setAgents(
-                (agentList.data as Array<{
-                  agent_id: string;
-                  agent_config?: {
-                    agent_name?: string;
-                    name?: string;
-                    instructions?: string;
-                  };
-                  [key: string]: unknown;
-                }>) || []
-              );
-
-              if (selectedAgentId === agentId) {
-                const remainingAgents = agentList.data?.filter(
-                  (a: { [key: string]: unknown }) =>
-                    (a as { agent_id: string }).agent_id !== agentId
-                );
-                if (remainingAgents && remainingAgents.length > 0) {
-                  const newAgent = remainingAgents[0] as {
-                    agent_id: string;
-                    agent_config?: {
-                      agent_name?: string;
-                      name?: string;
-                      instructions?: string;
-                    };
-                    [key: string]: unknown;
-                  };
-                  setSelectedAgentId(newAgent.agent_id);
-                  SessionUtils.saveCurrentAgentId(newAgent.agent_id);
-                  await loadAgentConfig(newAgent.agent_id);
-                  await loadAgentSessions(newAgent.agent_id);
-                } else {
-                  // no agents left
-                  setSelectedAgentId("");
-                  setCurrentSession(null);
-                  setSelectedAgentConfig(null);
-                }
-              }
-            } catch (refreshError) {
-              console.error("Error refreshing agents list:", refreshError);
-            }
-          } else {
-            // show error that we don't know about to user
-            console.error("Unexpected error during agent deletion:", error);
-            if (error instanceof Error) {
-              alert(`Failed to delete agent: ${error.message}`);
-            }
-          }
+      )
+        return;
+      const remaining = agents.filter(agent => agent.agent_id !== agentId);
+      SessionUtils.clearAgentCache(agentId);
+      SessionUtils.saveAgentsList(remaining);
+      setAgents(remaining);
+      if (selectedAgentId === agentId) {
+        abortControllerRef.current?.abort();
+        if (remaining.length > 0) selectAgent(remaining[0]);
+        else {
+          setSelectedAgentId("");
+          setCurrentSession(null);
+          setSelectedAgentConfig(null);
+          lastResponseIdRef.current = null;
         }
       }
     },
-    [client, selectedAgentId, loadAgentConfig, loadAgentSessions]
+    [agents, selectedAgentId, selectAgent]
   );
 
   const handleModelChange = useCallback((newModel: string) => {
@@ -812,7 +255,12 @@ export default function ChatPlaygroundPage() {
       try {
         setModelsLoading(true);
         setModelsError(null);
-        const modelList = await client.models.list();
+        const modelResponse = await client.models.list();
+        const modelList = Array.isArray(modelResponse)
+          ? modelResponse
+          : "data" in modelResponse
+            ? modelResponse.data
+            : [];
 
         // store all models (including embedding models for vector DB creation)
         setModels(modelList);
@@ -823,7 +271,12 @@ export default function ChatPlaygroundPage() {
             (model as ModelWithMetadata).custom_metadata?.model_type === "llm"
         );
         if (llmModels.length > 0) {
-          handleModelChange(llmModels[0].id);
+          setSelectedModel(previous => previous || llmModels[0].id);
+          setCurrentSession(previous =>
+            previous && !previous.selectedModel
+              ? { ...previous, selectedModel: llmModels[0].id }
+              : previous
+          );
         }
       } catch (err) {
         console.error("Error fetching models:", err);
@@ -835,152 +288,6 @@ export default function ChatPlaygroundPage() {
 
     fetchModels();
   }, [client, handleModelChange]);
-
-<<<<<<< HEAD
-  // load agent sessions after both agents and models are ready
-  useEffect(() => {
-    if (
-      selectedAgentId &&
-      !selectedAgentId.startsWith("chat-") &&
-      selectedAgentId !== "__responses_mode__" &&
-      !agentsLoading &&
-      !modelsLoading &&
-      selectedModel &&
-      !currentSession
-    ) {
-      loadAgentSessions(selectedAgentId);
-    }
-=======
-  // Load vector stores for file search tool
-  useEffect(() => {
-    const fetchVectorStores = async () => {
-      try {
-        const result = await client.vectorStores.list({
-          limit: 100,
-          order: "desc",
-        });
-        const stores =
-          (result as unknown as { data?: Record<string, unknown>[] }).data ||
-          [];
-        setVectorStores(
-          stores.map((s: Record<string, unknown>) => ({
-            id: s.id as string,
-            name: (s.name as string) || (s.id as string),
-          }))
-        );
-      } catch {
-        // Vector stores may not be available — that's fine
-      }
-    };
-
-    fetchVectorStores();
-  }, [client]);
-
-  useEffect(() => {
-    if (selectedModel && !currentSession && !conversationParam) {
-      createNewSession();
-    }
-  }, [selectedModel, currentSession, createNewSession, conversationParam]);
-
-  // Load an existing conversation from URL param
-  useEffect(() => {
-    if (
-      !conversationParam ||
-      currentSession?.conversationId === conversationParam
-    )
-      return;
-
-    const loadConversation = async () => {
-      setLoadingConversation(true);
-      setError(null);
-
-      try {
-        // Restore saved config from localStorage
-        const saved = getConversation(conversationParam);
-        if (saved?.toolsConfig) {
-          setToolsConfig(saved.toolsConfig);
-        }
-        if (saved?.systemInstructions) {
-          setSystemInstructions(saved.systemInstructions);
-        }
-        if (saved?.model) {
-          setSelectedModel(saved.model);
-        }
-        const savedFileIdMap = saved?.fileIdMap;
-
-        // Fetch conversation items from API
-        const result = await client.conversations.items.list(conversationParam);
-        const itemList = Array.isArray(result)
-          ? result
-          : (result as unknown as { data?: Record<string, unknown>[] }).data ||
-            [];
-
-        // Convert items to messages
-        const messages: Message[] = [];
-        for (const item of itemList) {
-          const itemObj = item as Record<string, unknown>;
-          const role = itemObj.role as string;
-          if (role !== "user" && role !== "assistant") continue;
-
-          let text = "";
-          const content = itemObj.content;
-          if (typeof content === "string") {
-            text = content;
-          } else if (Array.isArray(content)) {
-            for (const part of content as Record<string, unknown>[]) {
-              if (part.text) text += part.text as string;
-            }
-          }
-          if (!text) continue;
-
-          const hasCitations = /<\|[^|]+\|>/.test(text);
-          messages.push({
-            id: (itemObj.id as string) || `${Date.now()}-${messages.length}`,
-            role,
-            content: text,
-            createdAt: new Date(),
-            ...(role === "assistant" &&
-              hasCitations &&
-              savedFileIdMap && { fileIdMap: savedFileIdMap }),
-          });
-        }
-
-        // Items come back newest-first — reverse to chronological order
-        messages.reverse();
-
-        setCurrentSession({
-          id: conversationParam,
-          name: "Loaded Conversation",
-          messages,
-          selectedModel: saved?.model || selectedModel || "",
-          systemInstructions: saved?.systemInstructions || systemInstructions,
-          conversationId: conversationParam,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-      } catch (err) {
-        console.error("Failed to load conversation:", err);
-        setError(
-          "Failed to load conversation. It may have been deleted. Starting a new chat."
-        );
-        removeConversation(conversationParam);
-        router.replace("/chat-playground");
-        createNewSession();
-      } finally {
-        setLoadingConversation(false);
-      }
-    };
-
-    loadConversation();
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
-  }, [
-    selectedAgentId,
-    agentsLoading,
-    modelsLoading,
-    selectedModel,
-    currentSession,
-    loadAgentSessions,
-  ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -1050,37 +357,31 @@ export default function ChatPlaygroundPage() {
       if (lastResponseIdRef.current) {
         body.previous_response_id = lastResponseIdRef.current;
       }
-      if (
-        newAgentInstructions &&
-        newAgentInstructions !== "You are a helpful assistant."
-      ) {
-        body.instructions = newAgentInstructions;
-      }
-      // Map selected tools to Responses API format
-      if (selectedToolgroups.length > 0) {
-        const tools: Record<string, unknown>[] = [];
-        for (const toolId of selectedToolgroups) {
-          if (toolId === "web_search" || toolId.includes("websearch")) {
-            tools.push({ type: "web_search" });
-          } else if (
-            toolId === "file_search" ||
-            toolId.includes("file_search")
-          ) {
-            const toolConfig: Record<string, unknown> = { type: "file_search" };
-            if (selectedVectorDBs.length > 0) {
-              toolConfig.vector_store_ids = selectedVectorDBs;
-            }
-            tools.push(toolConfig);
-          }
-        }
-        if (tools.length > 0) {
-          body.tools = tools;
+      body.instructions =
+        currentSession?.systemMessage || "You are a helpful assistant.";
+      const tools: Record<string, unknown>[] = [];
+      for (const tool of selectedAgentConfig?.toolgroups || []) {
+        const toolId = typeof tool === "string" ? tool : tool.name;
+        if (toolId === "web_search" || toolId.includes("websearch")) {
+          tools.push({ type: "web_search" });
+        } else if (toolId.includes("file_search") || toolId.includes("rag")) {
+          tools.push({
+            type: "file_search",
+            vector_store_ids:
+              typeof tool === "object" ? tool.args.vector_db_ids || [] : [],
+          });
         }
       }
+      if (tools.length) body.tools = tools;
 
       const res = await fetch("/api/v1/responses", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(client.apiKey
+            ? { Authorization: `Bearer ${client.apiKey}` }
+            : {}),
+        },
         body: JSON.stringify(body),
         signal: abortController.signal,
       });
@@ -1116,6 +417,11 @@ export default function ChatPlaygroundPage() {
             // Capture the response ID for conversation continuity
             if (event.response?.id) {
               lastResponseIdRef.current = event.response.id;
+              setCurrentSession(previous =>
+                previous
+                  ? { ...previous, responseId: event.response.id }
+                  : previous
+              );
             }
 
             // Extract text from output_text.delta events
@@ -1192,388 +498,9 @@ export default function ChatPlaygroundPage() {
 
   const handleSubmitWithContent = async (content: string) => {
     if (!currentSession) return;
-
-    // Use Responses API if no agent is selected (agents API unavailable)
-    // Always use Responses API (agents API is unavailable)
     await handleSubmitViaResponses(content);
-    return;
-
-    setIsGenerating(true);
-    setError(null);
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    try {
-      const userMessage = {
-        role: "user" as const,
-        content,
-      };
-
-      const turnParams: TurnCreateParams = {
-        messages: [userMessage],
-        stream: true,
-      };
-
-      const response = await client.agents.turn.create(
-        selectedAgentId,
-        currentSession.id,
-        turnParams,
-        {
-          signal: abortController.signal,
-          timeout: 300000, // 5 minutes timeout for RAG queries
-        } as { signal: AbortSignal; timeout: number }
-      );
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "",
-        createdAt: new Date(),
-      };
-
-      const processChunk = (
-        chunk: unknown
-      ): { text: string | null; isToolCall: boolean } => {
-        const chunkObj = chunk as Record<string, unknown>;
-
-<<<<<<< HEAD
-        // helper to check if content contains function call JSON
-        const containsToolCall = (content: string): boolean => {
-          return (
-            content.includes('"type": "function"') ||
-            content.includes('"name": "file_search"') ||
-            content.includes('"parameters":') ||
-            !!content.match(/\{"type":\s*"function".*?\}/)
-          );
-        };
-=======
-          const chunkObj = chunk as unknown as Record<string, unknown>;
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
-
-        let isToolCall = false;
-        let potentialContent = "";
-
-        if (typeof chunk === "string") {
-          potentialContent = chunk;
-          isToolCall = containsToolCall(chunk);
-        }
-
-        if (
-          chunkObj?.delta &&
-          typeof chunkObj.delta === "object" &&
-          chunkObj.delta !== null
-        ) {
-          const delta = chunkObj.delta as Record<string, unknown>;
-          if ("tool_calls" in delta) {
-            isToolCall = true;
-          }
-          if (typeof delta.text === "string") {
-            potentialContent = delta.text;
-            if (containsToolCall(delta.text)) {
-              isToolCall = true;
-            }
-          }
-        }
-
-        if (
-          chunkObj?.event &&
-          typeof chunkObj.event === "object" &&
-          chunkObj.event !== null
-        ) {
-          const event = chunkObj.event as Record<string, unknown>;
-
-          if (
-            event?.payload &&
-            typeof event.payload === "object" &&
-            event.payload !== null
-          ) {
-            const payload = event.payload as Record<string, unknown>;
-            if (typeof payload.content === "string") {
-              potentialContent = payload.content;
-              if (containsToolCall(payload.content)) {
-                isToolCall = true;
-              }
-            }
-
-            if (
-              payload?.delta &&
-              typeof payload.delta === "object" &&
-              payload.delta !== null
-            ) {
-              const delta = payload.delta as Record<string, unknown>;
-              if (typeof delta.text === "string") {
-                potentialContent = delta.text;
-                if (containsToolCall(delta.text)) {
-                  isToolCall = true;
-                }
-              }
-            }
-          }
-
-          if (
-            event?.delta &&
-            typeof event.delta === "object" &&
-            event.delta !== null
-          ) {
-            const delta = event.delta as Record<string, unknown>;
-            if (typeof delta.text === "string") {
-              potentialContent = delta.text;
-              if (containsToolCall(delta.text)) {
-                isToolCall = true;
-              }
-            }
-            if (typeof delta.content === "string") {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              potentialContent = delta.content;
-              if (containsToolCall(delta.content)) {
-                isToolCall = true;
-              }
-            }
-          }
-        }
-
-        // if it's a tool call, skip it (don't display in chat)
-        if (isToolCall) {
-          return { text: null, isToolCall: true };
-        }
-
-        let text: string | null = null;
-
-        if (
-          chunkObj?.delta &&
-          typeof chunkObj.delta === "object" &&
-          chunkObj.delta !== null
-        ) {
-          const delta = chunkObj.delta as Record<string, unknown>;
-          if (typeof delta.text === "string") {
-            text = extractCleanText(delta.text);
-          }
-        }
-
-        if (
-          !text &&
-          chunkObj?.event &&
-          typeof chunkObj.event === "object" &&
-          chunkObj.event !== null
-        ) {
-          const event = chunkObj.event as Record<string, unknown>;
-
-          if (
-            event?.payload &&
-            typeof event.payload === "object" &&
-            event.payload !== null
-          ) {
-            const payload = event.payload as Record<string, unknown>;
-
-            if (typeof payload.content === "string") {
-              text = extractCleanText(payload.content);
-            }
-
-            if (
-              !text &&
-              payload?.turn &&
-              typeof payload.turn === "object" &&
-              payload.turn !== null
-            ) {
-              const turn = payload.turn as Record<string, unknown>;
-              if (
-                turn?.output_message &&
-                typeof turn.output_message === "object" &&
-                turn.output_message !== null
-              ) {
-                const outputMessage = turn.output_message as Record<
-                  string,
-                  unknown
-                >;
-                if (typeof outputMessage.content === "string") {
-                  text = extractCleanText(outputMessage.content);
-                }
-              }
-
-              if (
-                !text &&
-                turn?.steps &&
-                Array.isArray(turn.steps) &&
-                turn.steps.length > 0
-              ) {
-                for (const step of turn.steps) {
-                  if (step && typeof step === "object" && step !== null) {
-                    const stepObj = step as Record<string, unknown>;
-                    if (
-                      stepObj?.model_response &&
-                      typeof stepObj.model_response === "object" &&
-                      stepObj.model_response !== null
-                    ) {
-                      const modelResponse = stepObj.model_response as Record<
-                        string,
-                        unknown
-                      >;
-                      if (typeof modelResponse.content === "string") {
-                        text = extractCleanText(modelResponse.content);
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
-            }
-
-            if (
-              !text &&
-              payload?.delta &&
-              typeof payload.delta === "object" &&
-              payload.delta !== null
-            ) {
-              const delta = payload.delta as Record<string, unknown>;
-              if (typeof delta.text === "string") {
-                text = extractCleanText(delta.text);
-              }
-            }
-          }
-
-          if (
-            !text &&
-            event?.delta &&
-            typeof event.delta === "object" &&
-            event.delta !== null
-          ) {
-            const delta = event.delta as Record<string, unknown>;
-            if (typeof delta.text === "string") {
-              text = extractCleanText(delta.text);
-            }
-            if (!text && typeof delta.content === "string") {
-              text = extractCleanText(delta.content);
-            }
-          }
-        }
-
-        if (
-          !text &&
-          chunkObj?.choices &&
-          Array.isArray(chunkObj.choices) &&
-          chunkObj.choices.length > 0
-        ) {
-          const choice = chunkObj.choices[0] as Record<string, unknown>;
-          if (
-            choice?.delta &&
-            typeof choice.delta === "object" &&
-            choice.delta !== null
-          ) {
-            const delta = choice.delta as Record<string, unknown>;
-            if (typeof delta.content === "string") {
-              text = extractCleanText(delta.content);
-            }
-          }
-        }
-
-        if (!text && typeof chunk === "string") {
-          text = extractCleanText(chunk);
-        }
-
-        return { text, isToolCall: false };
-      };
-      setCurrentSession(prev => {
-        if (!prev) return null;
-        const updatedSession = {
-          ...prev,
-          messages: [...prev.messages, assistantMessage],
-          updatedAt: Date.now(),
-        };
-        // update cache with assistant message
-        SessionUtils.saveSessionData(prev.agentId, updatedSession);
-        return updatedSession;
-      });
-
-      let fullContent = "";
-
-      for await (const chunk of response) {
-        const { text: deltaText } = processChunk(chunk);
-
-        // logging for debugging function calls
-        // if (deltaText && deltaText.includes("file_search")) {
-        //   console.log("🔍 Function call detected in text output:", deltaText);
-        //   console.log("🔍 Original chunk:", JSON.stringify(chunk, null, 2));
-        // }
-
-        if (chunk && typeof chunk === "object" && "event" in chunk) {
-          const event = (
-            chunk as {
-              event: {
-                payload?: {
-                  event_type?: string;
-                  turn?: { output_message?: { content?: string } };
-                };
-              };
-            }
-          ).event;
-          if (event?.payload?.event_type === "turn_complete") {
-            const content = event?.payload?.turn?.output_message?.content;
-            if (content && content.includes("file_search")) {
-              console.log("🔍 Function call found in turn_complete:", content);
-            }
-          }
-        }
-
-        if (deltaText) {
-          fullContent += deltaText;
-
-          flushSync(() => {
-            setCurrentSession(prev => {
-              if (!prev) return null;
-              const newMessages = [...prev.messages];
-              const last = newMessages[newMessages.length - 1];
-              if (last.role === "assistant") {
-                last.content = fullContent;
-              }
-              const updatedSession = {
-                ...prev,
-                messages: newMessages,
-                updatedAt: Date.now(),
-              };
-              // update cache with streaming content
-              if (fullContent.length % 100 === 0) {
-                // Only cache every 100 characters
-                SessionUtils.saveSessionData(prev.agentId, updatedSession);
-              }
-              return updatedSession;
-            });
-          });
-        }
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        console.log("Request aborted");
-        return;
-      }
-
-      console.error("Error sending message:", err);
-      setError("Failed to send message. Please try again.");
-      setCurrentSession(prev =>
-        prev
-          ? {
-              ...prev,
-              messages: prev.messages.slice(0, -1),
-              updatedAt: Date.now(),
-            }
-          : prev
-      );
-    } finally {
-      setIsGenerating(false);
-      abortControllerRef.current = null;
-      // cache final session state after streaming completes
-      setCurrentSession(prev => {
-        if (prev) {
-          SessionUtils.saveSessionData(prev.agentId, prev);
-        }
-        return prev;
-      });
-    }
   };
+
   const suggestions = [
     "Write a Python function that prints 'Hello, World!'",
     "Explain step-by-step how to solve this math problem: If x² + 6x + 9 = 25, what is x?",
@@ -1606,8 +533,16 @@ export default function ChatPlaygroundPage() {
       setIsGenerating(false);
     }
 
+    lastResponseIdRef.current = null;
     setCurrentSession(prev =>
-      prev ? { ...prev, messages: [], updatedAt: Date.now() } : prev
+      prev
+        ? {
+            ...prev,
+            messages: [],
+            responseId: undefined,
+            updatedAt: Date.now(),
+          }
+        : prev
     );
     setError(null);
   };
@@ -1620,7 +555,11 @@ export default function ChatPlaygroundPage() {
 
     // find RAG toolgroups that have vector_db_ids configured
     const ragToolgroups = selectedAgentConfig.toolgroups.filter(toolgroup => {
-      if (typeof toolgroup === "object" && toolgroup.name?.includes("rag")) {
+      if (
+        typeof toolgroup === "object" &&
+        (toolgroup.name?.includes("rag") ||
+          toolgroup.name?.includes("file_search"))
+      ) {
         return toolgroup.args && "vector_db_ids" in toolgroup.args;
       }
       return false;
@@ -1652,81 +591,23 @@ export default function ChatPlaygroundPage() {
         return [];
       });
 
-      // determine mime type from file extension - this should be in the OGX Client IMO
-      const getContentType = (filename: string): string => {
-        const ext = filename.toLowerCase().split(".").pop();
-        switch (ext) {
-          case "pdf":
-            return "application/pdf";
-          case "txt":
-            return "text/plain";
-          case "md":
-            return "text/markdown";
-          case "html":
-            return "text/html";
-          case "csv":
-            return "text/csv";
-          case "json":
-            return "application/json";
-          case "docx":
-            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-          case "doc":
-            return "application/msword";
-          default:
-            return "application/octet-stream";
-        }
-      };
-
-      const mimeType = getContentType(file.name);
-      let fileContent: string;
-
-      // handle text files vs binary files differently
-      const isTextFile =
-        mimeType.startsWith("text/") ||
-        mimeType === "application/json" ||
-        mimeType === "text/markdown" ||
-        mimeType === "text/html" ||
-        mimeType === "text/csv";
-
-      if (isTextFile) {
-        fileContent = await file.text();
-      } else {
-        // for PDFs and other binary files, create a data URL
-        // use FileReader for efficient base64 conversion
-        fileContent = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(file);
+      const uploaded = await client.files.create({
+        file,
+        purpose: "assistants",
+      });
+      for (const vectorStoreId of vectorDbIds) {
+        const attached = await client.vectorStores.files.create(vectorStoreId, {
+          file_id: uploaded.id,
         });
-      }
-
-      for (const vectorDbId of vectorDbIds) {
-        await client.toolRuntime.ragTool.insert({
-          documents: [
-            {
-              content: fileContent,
-              document_id: `${file.name}-${Date.now()}`,
-              metadata: {
-                filename: file.name,
-                file_size: file.size,
-                uploaded_at: new Date().toISOString(),
-                agent_id: selectedAgentId,
-              },
-              mime_type: mimeType,
-            },
-          ],
-          vector_db_id: vectorDbId,
-          // TODO: parameterize this somewhere, probably in settings
-          chunk_size_in_tokens: 512,
-        });
+        if (attached.status === "failed")
+          throw new Error("Failed to index uploaded file");
       }
 
       console.log("✅ File successfully uploaded using RAG tool");
 
       setUploadNotification({
         show: true,
-        message: `📄 File "${file.name}" uploaded and indexed successfully!`,
+        message: `📄 File "${file.name}" uploaded to the selected vector stores successfully!`,
         type: "success",
       });
 
@@ -1797,33 +678,12 @@ export default function ChatPlaygroundPage() {
                 <Select
                   value={selectedAgentId}
                   onValueChange={agentId => {
-                    setSelectedAgentId(agentId);
-                    SessionUtils.saveCurrentAgentId(agentId);
-                    // Load local session for responses-mode agents
-                    const savedSession = SessionUtils.loadSessionData(agentId);
-                    if (savedSession) {
-                      setCurrentSession(savedSession);
-                    } else {
-                      const localSession: ChatSession = {
-                        id: `session-${Date.now()}`,
-                        agentId,
-                        name:
-                          agents.find(a => a.agent_id === agentId)?.agent_config
-                            ?.name || "Chat",
-                        messages: [],
-                        createdAt: Date.now(),
-                        updatedAt: Date.now(),
-                      };
-                      setCurrentSession(localSession);
-                    }
-                    lastResponseIdRef.current = null;
-                    // Load agent instructions
-                    const agent = agents.find(a => a.agent_id === agentId);
-                    if (agent?.agent_config?.instructions) {
-                      setNewAgentInstructions(agent.agent_config.instructions);
-                    }
+                    const agent = agents.find(
+                      item => item.agent_id === agentId
+                    );
+                    if (agent) selectAgent(agent);
                   }}
-                  disabled={agentsLoading}
+                  disabled={agentsLoading || isGenerating}
                 >
                   <SelectTrigger className="w-[200px]">
                     <SelectValue
@@ -1863,6 +723,7 @@ export default function ChatPlaygroundPage() {
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     title="Delete current agent"
+                    disabled={isGenerating}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -1871,6 +732,7 @@ export default function ChatPlaygroundPage() {
             )}
             <Button
               onClick={() => setShowCreateAgent(true)}
+              disabled={isGenerating}
               variant="outline"
               size="sm"
             >
@@ -1980,7 +842,9 @@ export default function ChatPlaygroundPage() {
                         const toolArgs =
                           typeof toolgroup === "object" ? toolgroup.args : null;
 
-                        const isRAGTool = toolName.includes("rag");
+                        const isRAGTool =
+                          toolName.includes("rag") ||
+                          toolName.includes("file_search");
                         const displayName = isRAGTool ? "RAG Search" : toolName;
                         const displayIcon = isRAGTool
                           ? "🔍"
@@ -2084,6 +948,7 @@ export default function ChatPlaygroundPage() {
                 </p>
                 <Button
                   onClick={() => setShowCreateAgent(true)}
+                  disabled={isGenerating}
                   size="lg"
                   className="mt-4"
                 >

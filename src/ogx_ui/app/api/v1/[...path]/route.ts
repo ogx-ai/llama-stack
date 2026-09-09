@@ -39,22 +39,9 @@ async function proxyRequest(request: NextRequest, method: string) {
 
     // Add body for methods that support it
     if (["POST", "PUT", "PATCH"].includes(method) && request.body) {
-<<<<<<< HEAD
       requestOptions.body = request.body;
       // Required for ReadableStream bodies in newer Node.js versions
-      requestOptions.duplex = "half" as RequestDuplex;
-=======
-      if (isMultipart) {
-        // Buffer multipart bodies so content-length is accurate
-        const bodyBuffer = await request.arrayBuffer();
-        requestOptions.body = bodyBuffer;
-        headers.set("content-length", bodyBuffer.byteLength.toString());
-      } else {
-        requestOptions.body = request.body;
-        // Required for ReadableStream bodies in newer Node.js versions
-        requestOptions.duplex = "half";
-      }
->>>>>>> f9993a7 (fix(ui): enable TypeScript build validation and fix 198 type errors (#6480))
+      requestOptions.duplex = "half";
     }
 
     // Make the request to FastAPI backend
