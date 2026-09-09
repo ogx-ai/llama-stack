@@ -7,7 +7,7 @@
 """Shared route-level access control evaluation.
 
 This is the single source of truth for "is this user allowed to access this
-route" -- used by RouteAuthorizationMiddleware for live HTTP/WebSocket requests,
+route" -- used by RouteAuthorizationMiddleware for live HTTP requests,
 and by any component (e.g. the batches provider) that executes a request against
 an API route outside of that middleware's reach, such as in-process background
 processing. Both call sites must agree, or a route forbidden at the HTTP layer
