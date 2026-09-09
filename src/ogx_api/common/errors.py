@@ -265,6 +265,33 @@ class AuthServiceUnavailableError(OGXError):
         super().__init__(message)
 
 
+<<<<<<< HEAD
+=======
+class UntrustedProxyError(OGXError):
+    """raised when a request fails trusted-proxy verification (CIDR allowlist)"""
+
+    status_code: httpx.codes = httpx.codes.FORBIDDEN
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class RouteAccessDeniedError(OGXError):
+    """raised when a route_policy rule denies the caller access to an API route.
+
+    Mirrors the 403 a live request to that route would get from
+    RouteAuthorizationMiddleware, for callers that execute a request against
+    a route outside that middleware's reach (e.g. batch processing).
+    """
+
+    status_code: httpx.codes = httpx.codes.FORBIDDEN
+
+    def __init__(self, route: str) -> None:
+        message = f"Access denied: insufficient permissions for route {route}"
+        super().__init__(message)
+
+
+>>>>>>> bd5ff2c (docs(batches): clarify security model and add authorization tests (#6485))
 class InvalidParameterError(ValueError, OGXError):
     """Raised when a request parameter violates validation constraints.
 

@@ -4,16 +4,18 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
-import re
 from typing import Any
 
 import httpx
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from ogx.core.access_control.conditions import User as ProtocolUser
-from ogx.core.access_control.conditions import parse_conditions
 from ogx.core.access_control.datatypes import RouteAccessRule
+<<<<<<< HEAD
 from ogx.core.datatypes import AuthenticationConfig, User
+=======
+from ogx.core.access_control.route_access import is_route_allowed
+from ogx.core.datatypes import AuthenticationConfig, TenancyConfig, TenancyMode
+>>>>>>> bd5ff2c (docs(batches): clarify security model and add authorization tests (#6485))
 from ogx.core.request_headers import user_from_scope
 from ogx.core.server.auth_providers import create_auth_provider
 from ogx.core.server.routes import find_matching_route, initialize_route_impls
@@ -210,14 +212,18 @@ class RouteAuthorizationMiddleware:
         # Get authenticated user from scope (set by AuthenticationMiddleware if present)
         user = user_from_scope(scope)
 
-        # Check if user has permission to access this route
-        if not self._is_route_allowed(route, user):
+        # Check if user has permission to access this route. Delegates to the same
+        # evaluation used outside the HTTP layer (see access_control.route_access)
+        # so a route forbidden here can't be reached indirectly, e.g. through
+        # in-process background processing.
+        if not is_route_allowed(route, user, self.route_policy):
             return await self._send_error(
                 send, f"Access denied: insufficient permissions for route {route}", status=403
             )
 
         return await self.app(scope, receive, send)
 
+<<<<<<< HEAD
     def _is_route_allowed(self, route: str, user: User | None) -> bool:
         """Check if the user is allowed to access the given route.
 
@@ -370,6 +376,9 @@ class RouteAuthorizationMiddleware:
         return True
 
     async def _send_error(self, send: Send, message: str, status: int = 403) -> None:
+=======
+    async def _send_error(self, send: Send, message: str, status: int = 403, is_websocket: bool = False) -> None:
+>>>>>>> bd5ff2c (docs(batches): clarify security model and add authorization tests (#6485))
         """Send an error response."""
         await send(
             {
@@ -382,6 +391,7 @@ class RouteAuthorizationMiddleware:
         await send({"type": "http.response.body", "body": error_msg})
 
 
+<<<<<<< HEAD
 class _RouteContext:
     """Placeholder resource for route-level condition evaluation.
 
@@ -394,3 +404,70 @@ class _RouteContext:
         self.type = "route"
         self.identifier = "route"
         self.owner: ProtocolUser | None = None
+=======
+class TenancyMiddleware:
+    """Middleware that enforces tenancy mode after authentication.
+
+    In disabled mode, this is a no-op passthrough.
+    In single mode, overrides tenant_id to default_tenant_id on every request.
+    In multi mode, rejects requests that have no tenant_id after auth resolution.
+    """
+
+    def __init__(self, app: ASGIApp, tenancy_config: TenancyConfig) -> None:
+        self.app = app
+        self.tenancy_config = tenancy_config
+        self._route_impls: RouteImpls | None = None
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> Any:
+        if scope["type"] not in ("http", "websocket"):
+            return await self.app(scope, receive, send)
+
+        if self.tenancy_config.mode == TenancyMode.DISABLED:
+            return await self.app(scope, receive, send)
+
+        is_websocket = scope["type"] == "websocket"
+        if not is_websocket and self._is_public_route(scope):
+            return await self.app(scope, receive, send)
+
+        if self.tenancy_config.mode == TenancyMode.SINGLE:
+            scope["tenant_id"] = self.tenancy_config.default_tenant_id
+            if not scope.get("principal"):
+                scope["principal"] = "system"
+        elif self.tenancy_config.mode == TenancyMode.MULTI:
+            if not scope.get("tenant_id"):
+                return await self._send_error(
+                    send,
+                    "Tenant context required but not resolved from authentication",
+                    is_websocket=is_websocket,
+                )
+
+        return await self.app(scope, receive, send)
+
+    def _is_public_route(self, scope: Scope) -> bool:
+        if self._route_impls is None:
+            top_app = scope.get("app")
+            assert top_app is not None, "scope must contain the FastAPI app under the 'app' key"
+            self._route_impls = build_route_impls_from_routes(top_app.router.routes)
+
+        path = scope.get("path", "")
+        method = scope.get("method", "GET")
+        try:
+            _, _, _, webmethod = find_matching_route(method, path, self._route_impls)
+        except ValueError:
+            return False
+        return webmethod.require_authentication is False
+
+    async def _send_error(self, send: Send, message: str, is_websocket: bool = False) -> None:
+        if is_websocket:
+            await send({"type": "websocket.close", "code": 4401})
+            return
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [[b"content-type", b"application/json"]],
+            }
+        )
+        error_msg = OpenAIErrorResponse.from_message(message).to_bytes()
+        await send({"type": "http.response.body", "body": error_msg})
+>>>>>>> bd5ff2c (docs(batches): clarify security model and add authorization tests (#6485))
