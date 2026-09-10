@@ -41,14 +41,19 @@ not establish the operator version used by historical deployments.
 
 ## JOSS proof
 
-The [existing JOSS proof](https://github.com/openjournals/joss-papers/blob/28806e6eceeb8d146d178df7f4194fa2549ad4fc/joss.11234/10.21105.joss.11234.pdf)
-was generated on 31 August 2026 and predates these manuscript updates. It
-still contains the unversioned software and operator citations. The pinned
-manuscript above identifies the revised source, not the build commit of that
-older proof.
-After merging the updates, run `@editorialbot generate pdf` on the
+The [JOSS proof generated on 10 September 2026](https://github.com/openjournals/joss-papers/blob/45c9cbbc304d51ba94241c9ecd1322574bfcd7e8/joss.11234/10.21105.joss.11234.pdf)
+contains the revised deployment wording and versioned software and operator
+citations. Its corresponding manuscript pair is pinned at
+[`3a1e778b362a5f827796b0dd3529bd883607ed59`](https://github.com/ogx-ai/ogx/tree/3a1e778b362a5f827796b0dd3529bd883607ed59);
+those files are byte-identical to the merged source when the proof was
+requested. This identifies a source snapshot, without claiming the bot's
+checkout commit. The PDF SHA-256 is
+`e7c843d2b827bbb9333d7d1df33c83aa1da84300899f83e0eaaaa15a48730b57`.
+
+That proof predates the shortened manuscript and corrected SGLang reference
+pinned above. After merging those updates, run `@editorialbot generate pdf` on the
 [JOSS review issue](https://github.com/openjournals/joss-reviews/issues/11234)
-to generate a proof with the revised wording and versioned citations, and
+to generate a proof with the final manuscript, and
 record the new proof link alongside its manuscript source revision. If either
 manuscript file changes, update both source links and the table before
 regenerating the proof.
