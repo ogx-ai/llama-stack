@@ -4,11 +4,12 @@ This directory holds `ogx.tex` (and its build artifacts `ogx.bbl`, `ogx.pdf`,
 `references.bib`), a standalone, diagram-heavy technical whitepaper. **It is a
 separate document from the JOSS submission**, not an alternate build of it.
 
-- **JOSS manuscript:** [`paper.md`](https://github.com/ogx-ai/ogx/blob/3a1e778b362a5f827796b0dd3529bd883607ed59/paper.md)
-  and [`paper.bib`](https://github.com/ogx-ai/ogx/blob/3a1e778b362a5f827796b0dd3529bd883607ed59/paper.bib)
-  at commit `3a1e778b362a5f827796b0dd3529bd883607ed59`, including the
-  revised deployment wording and versioned software and operator citations
-  recorded below. These links identify the manuscript independently of the
+- **JOSS manuscript:** [`paper.md`](https://github.com/ogx-ai/ogx/blob/ef952f3d023a5d4f6e82ea1ec48b07a812529ed9/paper.md)
+  and [`paper.bib`](https://github.com/ogx-ai/ogx/blob/ef952f3d023a5d4f6e82ea1ec48b07a812529ed9/paper.bib)
+  at commit `ef952f3d023a5d4f6e82ea1ec48b07a812529ed9`, including the
+  shortened manuscript, corrected SGLang reference, revised deployment
+  wording, and versioned source citations recorded below. These links
+  identify the manuscript independently of the
   software release tag.
 - **This whitepaper:** `ogx.tex`, built against `references.bib` and `ogx.bbl`
   in this directory. It shares subject matter with `paper.md` but is
@@ -28,7 +29,7 @@ manuscript are identified independently:
 | --- | --- | --- |
 | OGX software | `v1.0.2` | commit `9424b4d9e5eca99bfc79a6e0004e28adf5f58704` |
 | OGX Kubernetes Operator | `v0.10.0` | commit `7fa16532e1434bf74493ca305b1e21030914ae57` |
-| Manuscript (`paper.md` / `paper.bib`) | -- | commit `3a1e778b362a5f827796b0dd3529bd883607ed59` |
+| Manuscript (`paper.md` / `paper.bib`) | -- | commit `ef952f3d023a5d4f6e82ea1ec48b07a812529ed9` |
 
 The operator reference is an existing tagged source snapshot. Its
 [`OGXServer` API](https://github.com/ogx-ai/ogx-k8s-operator/blob/7fa16532e1434bf74493ca305b1e21030914ae57/api/v1beta1/ogxserver_types.go)
