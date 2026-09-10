@@ -138,7 +138,7 @@ As of June 2026, the project has over 8,400 GitHub stars, 242 contributors, 4,00
 
 # AI Usage Disclosure
 
-Generative AI tools, including GitHub Copilot, Anthropic Claude, and OpenAI Codex, were used for code completion, documentation drafting, and paper drafting. Assistance was limited to generating candidate text or code that human contributors reviewed, edited, tested, and validated. Core architectural decisions, API design, the security model, and final paper content were made by human authors.
+Generative AI tools, including GitHub Copilot, Anthropic Claude, and OpenAI Codex (GPT-6), were used for code completion, documentation drafting, and paper drafting. Assistance was limited to generating candidate text or code that human contributors reviewed, edited, tested, and validated. Core architectural decisions, API design, the security model, and final paper content were made by human authors.
 
 # Acknowledgements
 
