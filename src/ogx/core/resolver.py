@@ -462,6 +462,9 @@ async def instantiate_provider(
         args = [config, deps]
         if "policy" in inspect.signature(getattr(module, method)).parameters:
             args.append(policy)
+        if "route_policy" in inspect.signature(getattr(module, method)).parameters:
+            route_policy = run_config.server.auth.route_policy if run_config.server.auth else []
+            args.append(route_policy)
     if isinstance(provider_spec, InlineProviderSpec) and getattr(provider_spec, "execution_mode", "inline") == "worker":
         impl = _instantiate_worker_proxy(provider, provider_spec, config, deps, policy)
     else:

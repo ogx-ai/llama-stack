@@ -309,7 +309,10 @@ check_provider_dependencies() {
 
     if [[ "$INSTALL_DEPS" == true ]]; then
         echo "Installing missing provider dependencies: ${missing[*]}"
-        ogx stack list-deps "$config_name" | xargs -L1 uv pip install
+        if ! ogx stack list-deps "$config_name" | xargs -L1 uv pip install; then
+            echo "Failed to install provider dependencies for '$config_name'" >&2
+            return 1
+        fi
         return 0
     fi
 

@@ -86,6 +86,16 @@ def get_distribution_template() -> DistributionTemplate:
         }
     }
 
+    # Env-gated tenancy config. Defaults to DISABLED (no tenant_id column), matching
+    # the stock behaviour; the Praxis migration e2e workflow flips OGX_TENANCY_MODE=single
+    # + OGX_DEFAULT_TENANT_ID=<tenant> for the single-tenant leg so OGX stamps a
+    # populated tenant_id column. default_tenant_id is only validated when mode=single,
+    # so the empty default is safe when tenancy is disabled.
+    tenancy_config = {
+        "mode": "${env.OGX_TENANCY_MODE:=disabled}",
+        "default_tenant_id": "${env.OGX_DEFAULT_TENANT_ID:=}",
+    }
+
     watsonx_provider = Provider(
         provider_id="${env.WATSONX_API_KEY:+watsonx}",
         provider_type="remote::watsonx",
@@ -113,5 +123,8 @@ def get_distribution_template() -> DistributionTemplate:
 
         # Add conditional auth config
         run_config.auth_config = auth_config
+
+        # Add env-gated tenancy config (disabled by default)
+        run_config.tenancy_config = tenancy_config
 
     return template
