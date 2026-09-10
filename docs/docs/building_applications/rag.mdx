@@ -20,8 +20,13 @@ RAG enables your applications to reference and recall information from external 
 In one terminal, start the OGX server:
 
 ```bash
+<<<<<<< HEAD
 ogx list-deps starter | xargs -L1 uv pip install
 ogx stack run starter
+=======
+ogx stack list-deps starter | xargs -L1 uv pip install
+ogx run starter
+>>>>>>> f7f4ee4 (fix(docs): correct list-deps CLI commands after the OGX rename (#6459))
 ```
 
 ### 2. Choose Your Approach
