@@ -39,8 +39,8 @@ from ogx.core.server.fastapi_router_registry import build_fastapi_router
 from ogx.core.server.routes import RouteAuthInfo
 from ogx.core.server.server import ProviderDataMiddleware
 from ogx.core.storage.datatypes import (
-    SqlStoreReference,
     SqliteSqlStoreConfig,
+    SqlStoreReference,
 )
 from ogx.core.storage.sqlstore.authorized_sqlstore import (
     get_default_tenancy_config,
