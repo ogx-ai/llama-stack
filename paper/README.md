@@ -41,20 +41,22 @@ not establish the operator version used by historical deployments.
 
 ## JOSS proof
 
-The [JOSS proof generated on 10 September 2026](https://github.com/openjournals/joss-papers/blob/45c9cbbc304d51ba94241c9ecd1322574bfcd7e8/joss.11234/10.21105.joss.11234.pdf)
-contains the revised deployment wording, OGX `v1.0.2` citation, and versioned
-operator citation. Its corresponding manuscript pair is pinned at
-[`3a1e778b362a5f827796b0dd3529bd883607ed59`](https://github.com/ogx-ai/ogx/tree/3a1e778b362a5f827796b0dd3529bd883607ed59);
-those files are byte-identical to the merged source when the proof was
-requested. This identifies a source snapshot, without claiming the bot's
-checkout commit. The PDF SHA-256 is
-`e7c843d2b827bbb9333d7d1df33c83aa1da84300899f83e0eaaaa15a48730b57`.
+The [JOSS proof generated on 10 September 2026 at 20:51 UTC](https://github.com/openjournals/joss-papers/blob/86bf0fe916ed4c2c753cf90221f91b78a1efb143/joss.11234/10.21105.joss.11234.pdf)
+contains the shortened manuscript, revised deployment wording, OGX `v1.0.3`
+source citation, versioned operator citation, and corrected SGLang reference.
+Its corresponding manuscript pair is pinned at
+[`7ce8d77a4faa98863529f227d874b75770b6c805`](https://github.com/ogx-ai/ogx/tree/7ce8d77a4faa98863529f227d874b75770b6c805);
+those files are byte-identical to the merged source at
+[`016a6079594de71b58cba2e58842126fadda2ec1`](https://github.com/ogx-ai/ogx/tree/016a6079594de71b58cba2e58842126fadda2ec1)
+when the proof was requested. This identifies a source snapshot, without
+claiming the bot's checkout commit. The PDF SHA-256 is
+`4e076a5036c6c6efd7c97536411e58f515d35f604f6de3fecdc124af458bd99e`.
 
-That proof predates the shortened manuscript, OGX `v1.0.3` citation, and
-corrected SGLang reference pinned above. After merging those updates, run
-`@editorialbot generate pdf` on the
-[JOSS review issue](https://github.com/openjournals/joss-reviews/issues/11234)
-to generate a proof with the final manuscript, and
-record the new proof link alongside its manuscript source revision. If either
-manuscript file changes, update both source links and the table before
-regenerating the proof.
+The rendered proof includes the AI disclosure on page 4, immutable OGX and
+operator source references on page 5, and the corrected SGLang author list
+and DOI on page 6.
+
+If either manuscript file changes, update both source links and the table,
+then run `@editorialbot generate pdf` on the
+[JOSS review issue](https://github.com/openjournals/joss-reviews/issues/11234).
+Record the new proof link and hash alongside its manuscript source revision.
